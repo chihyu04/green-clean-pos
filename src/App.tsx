@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
 const INITIAL_CUSTOMERS = [
-  { id: 'MEM-0001', name: '陳美玲', phone: '0912-345-678', level: '金卡', esgPoints: 1250, co2Saved: 35.8, borrowedBags: ['BAG-8821'], lastVisit: '2026-06-15', totalOrders: 28, balance: 1500, totalSpent: 12450 },
-  { id: 'MEM-0002', name: '林志明', phone: '0928-111-222', level: '銀卡', esgPoints: 420, co2Saved: 12.4, borrowedBags: [], lastVisit: '2026-06-20', totalOrders: 12, balance: 350, totalSpent: 6780 },
-  { id: 'MEM-0003', name: '張雅婷', phone: '0935-777-888', level: '金卡', esgPoints: 3100, co2Saved: 92.5, borrowedBags: ['BAG-1024', 'BAG-2045'], lastVisit: '2026-05-10', totalOrders: 54, balance: 4200, totalSpent: 18900 },
-  { id: 'MEM-0004', name: '王大同', phone: '0988-555-444', level: '銅卡', esgPoints: 80, co2Saved: 2.1, borrowedBags: [], lastVisit: '2026-06-25', totalOrders: 2, balance: 0, totalSpent: 3250 },
-  { id: 'MEM-0005', name: '李若薇', phone: '0919-666-333', level: '銀卡', esgPoints: 350, co2Saved: 9.8, borrowedBags: [], lastVisit: '2026-04-01', totalOrders: 8, balance: 800, totalSpent: 4500 },
+  { id: 'MEM-0001', name: '陳美玲', phone: '0912-345-678', level: '金卡', esgPoints: 1250, co2Saved: 35.8, borrowedBags: ['BAG-8821'], lastVisit: '2026-06-15', totalOrders: 28, balance: 1500, totalSpent: 12450, habits: '每週二固定來店送洗上班襯衫、西裝' },
+  { id: 'MEM-0002', name: '林志明', phone: '0928-111-222', level: '銀卡', esgPoints: 420, co2Saved: 12.4, borrowedBags: [], lastVisit: '2026-06-20', totalOrders: 12, balance: 350, totalSpent: 6780, habits: '換季時固定會送洗被子、羽絨衣' },
+  { id: 'MEM-0003', name: '張雅婷', phone: '0935-777-888', level: '金卡', esgPoints: 3100, co2Saved: 92.5, borrowedBags: ['BAG-1024', 'BAG-2045'], lastVisit: '2026-05-10', totalOrders: 54, balance: 4200, totalSpent: 18900, habits: '注重高溫除蟎，偏好使用生物溶劑，不加人工香精' },
+  { id: 'MEM-0004', name: '王大同', phone: '0988-555-444', level: '銅卡', esgPoints: 80, co2Saved: 2.1, borrowedBags: [], lastVisit: '2026-06-25', totalOrders: 2, balance: 0, totalSpent: 3250, habits: '通常週六上午送洗，要求西裝領口加壓領線' },
+  { id: 'MEM-0005', name: '李若薇', phone: '0919-666-333', level: '銀卡', esgPoints: 350, co2Saved: 9.8, borrowedBags: [], lastVisit: '2026-04-01', totalOrders: 8, balance: 800, totalSpent: 4500, habits: '高單價洋裝送洗愛好者，每次均自備衣袋' },
 ];
 
 const ITEM_CATEGORIES = [
@@ -25,15 +25,16 @@ const INITIAL_ORDERS = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('checkout');
   
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [bagCirculationCount, setBagCirculationCount] = useState(584);
-  const [chartView, setChartView] = useState('月');
-  const [dashboardChartView, setDashboardChartView] = useState('月');
+  const [chartView, setChartView] = useState('月'); 
+  const [dashboardChartView, setDashboardChartView] = useState('月'); 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // 收銀台 (衣物管理分頁) 狀態
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchPhone, setSearchPhone] = useState('');
   const [orderItems, setOrderItems] = useState<any[]>([]);
@@ -41,6 +42,7 @@ export default function App() {
   const [orderRemark, setOrderRemark] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('現金');
 
+  // 各種控制彈窗
   const [isCustomItemOpen, setIsCustomItemOpen] = useState(false);
   const [customItemName, setCustomItemName] = useState('');
   const [customItemPrice, setCustomItemPrice] = useState('');
@@ -56,13 +58,18 @@ export default function App() {
   const [topUpCustomer, setTopUpCustomer] = useState<any>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
 
+  // 顧客備註快速修改狀態
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  const [tempHabitText, setTempHabitText] = useState('');
+
   const [inventoryList, setInventoryList] = useState([
-    { id: 'INV-01', name: '智慧循環衣袋 (小)', stock: 120, minStock: 20, unit: '個' },
-    { id: 'INV-02', name: '智慧循環衣袋 (大)', stock: 85, minStock: 15, unit: '個' },
-    { id: 'INV-03', name: '環保無毒生物溶劑', stock: 45, minStock: 10, unit: '公升' },
-    { id: 'INV-04', name: '高溫殺菌防縐蒸汽水', stock: 60, minStock: 15, unit: '公升' }
+    { id: 'INV-01', name: '智慧循環衣袋', stock: 120, minStock: 20, unit: '個' },
+    { id: 'INV-02', name: '環保回收衣架', stock: 350, minStock: 50, unit: '支' },
+    { id: 'INV-03', name: '整袋送洗之洗衣籃', stock: 15, minStock: 3, unit: '個' },
+    { id: 'INV-04', name: '環保無毒生物溶劑', stock: 45, minStock: 10, unit: '公升' }
   ]);
 
+  // 營運設定狀態
   const [settings, setSettings] = useState({
     storeName: '綠潔智慧乾洗 - 台北忠孝旗艦店',
     phone: '02-2771-0000',
@@ -71,6 +78,7 @@ export default function App() {
     isAutoPrintLabel: true
   });
 
+  // 再行銷/客群推播
   const [marketingSegment, setMarketingSegment] = useState('eco_fans');
   const [customSmsContent, setCustomSmsContent] = useState('');
   const [campaignHistory, setCampaignHistory] = useState([
@@ -78,10 +86,14 @@ export default function App() {
     { id: 'CAM-02', name: '梅雨季烘乾貼心提醒', segment: '全體會員', date: '2026-06-18', count: 5, content: '最近連日大雨，家裡衣服曬不乾嗎？綠潔為您提供100%環保烘乾與抗過敏除蟎清洗服務！', status: '已發送' }
   ]);
 
+  // 洗衣狀態篩選與多選
   const [orderStatusFilter, setOrderStatusFilter] = useState('全部');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+  // 會員篩選
   const [memberSearch, setMemberSearch] = useState('');
 
+  // 定義被篩選後的訂單資料
   const filteredOrders = orderStatusFilter === '全部'
     ? orders
     : orders.filter(o => o.status === orderStatusFilter);
@@ -131,6 +143,7 @@ export default function App() {
     }
   };
 
+  // 快速新增自訂衣物
   const handleAddCustomItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customItemName || !customItemPrice) {
@@ -162,6 +175,7 @@ export default function App() {
     showToast(`已成功新增自訂衣服項目「${customItemName}」`);
   };
 
+  // 購物車變更與收銀
   const updateCartItem = (index: number, field: string, value: any) => {
     const updated = [...orderItems];
     updated[index][field] = value;
@@ -397,6 +411,7 @@ export default function App() {
     setIsQuickReturnOpen(false);
   };
 
+  // 會員加值
   const handleTopUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(topUpAmount);
@@ -425,6 +440,7 @@ export default function App() {
     showToast(`儲值成功！${topUpCustomer.name} 已成功儲值 $${amt} 元。`);
   };
 
+  // 新增會員
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberName || !newMemberPhone) return;
@@ -441,7 +457,8 @@ export default function App() {
       lastVisit: '今日',
       totalOrders: 0,
       balance: 0,
-      totalSpent: 0
+      totalSpent: 0,
+      habits: '新註冊會員，無備註'
     };
     setCustomers([newCust, ...customers]);
     setSelectedCustomer(newCust);
@@ -451,6 +468,20 @@ export default function App() {
     showToast(`新會員 ${newCust.name} 創建成功！`);
   };
 
+  // 保存客戶專屬備註 / 習性
+  const handleSaveHabit = (id: string) => {
+    const updated = customers.map(c => {
+      if (c.id === id) {
+        return { ...c, habits: tempHabitText };
+      }
+      return c;
+    });
+    setCustomers(updated);
+    setEditingHabitId(null);
+    showToast('📝 顧客習性備註已成功儲存！');
+  };
+
+  // 衣袋循環折線圖數據 (報表分析頁面)
   const getChartData = () => {
     if (chartView === '月') {
       return [
@@ -480,6 +511,7 @@ export default function App() {
   const chartPoints = getChartData();
   const polylinePointsString = chartPoints.map(p => `${p.x},${p.y}`).join(' ');
 
+  // 實時動態計算：首頁「營收趨勢」圖表數據點
   const getDashboardChartData = () => {
     if (dashboardChartView === '月') {
       return [
@@ -513,10 +545,11 @@ export default function App() {
     <div className="flex h-screen bg-[#f4f7f6] font-sans text-slate-800 overflow-hidden">
       
       {/* ==========================================
-          左側主選單
+          左側主選單 (風格完全看齊 image_9ac926.jpg)
           ========================================== */}
       <aside className="w-64 bg-[#3f8f61] text-white flex flex-col justify-between shadow-xl shrink-0 z-10">
         <div>
+          {/* Logo 標題 */}
           <div className="p-6 bg-[#327750] flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-xl text-white">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -529,6 +562,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* 備援快速按鈕 */}
           <div className="px-4 py-3 space-y-2 border-b border-white/10 bg-[#378156]">
             <button
               type="button"
@@ -552,6 +586,7 @@ export default function App() {
             </button>
           </div>
 
+          {/* 導航功能清單 (7 大分頁) */}
           <nav className="px-3 py-4 space-y-1">
             {[
               { id: 'dashboard', name: '首頁', icon: '🏠' },
@@ -592,6 +627,7 @@ export default function App() {
           ========================================== */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
         
+        {/* 頂部輕量級 Header */}
         <header className="bg-white border-b border-slate-200 py-4 px-8 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-slate-800">
@@ -610,11 +646,16 @@ export default function App() {
           </div>
         </header>
 
+        {/* 核心內容渲染 */}
         <div className="p-8 flex-1 min-h-0">
           
-          {/* 1. 首頁看板 */}
+          {/* ====================================================================================
+              1. 首頁 (對標 image_9ac926.jpg 第一頁看板設計，並修復點位對齊)
+              ==================================================================================== */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
+              
+              {/* 4 大指標卡片 */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
                   <div className="text-slate-400 text-xs font-semibold">今日訂單</div>
@@ -638,7 +679,10 @@ export default function App() {
                 </div>
               </div>
 
+              {/* 折線圖與比例圓環圖 */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                
+                {/* 營收趨勢 */}
                 <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-700">營收趨勢</h3>
@@ -692,16 +736,22 @@ export default function App() {
                         <g key={idx}>
                           <circle cx={p.x} cy={p.y} r="5.5" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
                           <circle cx={p.x} cy={p.y} r="2" fill="#3f8f61" />
-                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0f172a">{p.val}</text>
-                          <text x={p.x} y="145" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="semibold">{p.label}</text>
+                          
+                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0f172a">
+                            {p.val}
+                          </text>
+                          <text x={p.x} y="145" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="semibold">
+                            {p.label}
+                          </text>
                         </g>
                       ))}
                     </svg>
                   </div>
                 </div>
 
+                {/* 訂單狀態比例 (圓環圖) */}
                 <div className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-700">訂開狀態比例</h3>
+                  <h3 className="text-sm font-bold text-slate-700">訂單狀態比例</h3>
                   <div className="flex items-center justify-between">
                     <div className="relative w-32 h-32 shrink-0">
                       <svg className="w-full h-full" viewBox="0 0 36 36">
@@ -732,10 +782,12 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
               </div>
 
+              {/* 客戶資料 */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <h3 className="text-sm font-bold text-slate-700 mb-4">客戶資料</h3>
+                <h3 className="text-sm font-bold text-slate-700 mb-4">客戶資料摘要</h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
@@ -772,10 +824,13 @@ export default function App() {
                   </table>
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* 2. 訂單管理 */}
+          {/* ==========================================
+              2. 訂單管理
+              ========================================== */}
           {activeTab === 'orders' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
               <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center border-b border-slate-100 pb-3">
@@ -837,7 +892,7 @@ export default function App() {
                       <th className="pb-2">衣物項目 & 顏色</th>
                       <th className="pb-2">當前狀態 ｜ 包裝袋</th>
                       <th className="pb-2">費用</th>
-                      <th className="pb-2 text-center">狀態調整</th>
+                      <th className="pb-2 text-center">狀態調整(自由切換)</th>
                       <th className="pb-2 text-center">流程操作</th>
                     </tr>
                   </thead>
@@ -863,7 +918,7 @@ export default function App() {
                           <div className="text-[10px] text-slate-400 font-mono">{order.memberId}</div>
                         </td>
                         <td className="py-3 text-slate-600">
-                          {order.items.map((it: any, idx: number) => (
+                          {order.items.map((it, idx) => (
                             <div key={idx} className="text-[11px]">
                               {it.type} ({it.color}) × {it.count}
                             </div>
@@ -884,7 +939,7 @@ export default function App() {
                           <select
                             value={order.status}
                             onChange={(e) => handleSingleStatusChange(order.id, e.target.value)}
-                            className="bg-white border rounded p-1 text-[11px] focus:outline-none focus:ring-1 focus:ring-[#3f8f61]"
+                            className="bg-white border rounded p-1 text-[11px] focus:outline-none"
                           >
                             <option value="清洗中">清洗中</option>
                             <option value="整燙中">整燙中</option>
@@ -937,91 +992,133 @@ export default function App() {
             </div>
           )}
 
-          {/* 3. 客戶管理 */}
+          {/* ==========================================
+              3. 客戶管理
+              ========================================== */}
           {activeTab === 'members' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-base font-bold text-slate-800">數位會員名冊與帳務管理</h3>
-                  <div className="relative w-64">
-                    <input 
-                      type="text" 
-                      placeholder="搜尋會員編號、手機或名字..."
-                      value={memberSearch}
-                      onChange={(e) => setMemberSearch(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-3 pr-8 text-xs focus:outline-none"
-                    />
-                  </div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-bold text-slate-800">數位會員名冊與習性記錄</h3>
+                <div className="relative w-64">
+                  <input 
+                    type="text" 
+                    placeholder="搜尋會員編號、手機或名字..."
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-3 pr-8 text-xs focus:outline-none"
+                  />
                 </div>
+              </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-slate-400 pb-2">
-                        <th className="pb-2">會員編號</th>
-                        <th className="pb-2">姓名 ｜ 電話</th>
-                        <th className="pb-2">儲值金餘額</th>
-                        <th className="pb-2">未歸還之衣袋編碼</th>
-                        <th className="pb-2 text-center">借袋個數</th>
-                        <th className="pb-2 text-right">ESG點數 ｜ 累計碳減量</th>
-                        <th className="pb-2 text-center">儲值操作</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {customers
-                        .filter(c => c.name.includes(memberSearch) || c.phone.includes(memberSearch) || c.id.includes(memberSearch))
-                        .map(c => (
-                          <tr key={c.id} className="hover:bg-slate-50">
-                            <td className="py-3 font-mono font-bold text-slate-700">{c.id}</td>
-                            <td className="py-3">
-                              <div className="font-bold text-slate-800">{c.name}</div>
-                              <div className="text-[10px] text-slate-500">{c.phone}</div>
-                            </td>
-                            <td className="py-3 font-mono font-bold text-[#3f8f61]">${c.balance}</td>
-                            <td className="py-3">
-                              {c.borrowedBags.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {c.borrowedBags.map(bag => (
-                                    <span key={bag} className="font-mono text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
-                                      🏷️ {bag}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-[#3f8f61] font-semibold text-[10px]">✅ 無借袋</span>
-                              )}
-                            </td>
-                            <td className="py-3 text-center font-bold">{c.borrowedBags.length}</td>
-                            <td className="py-3 text-right">
-                              <div className="font-bold">{c.esgPoints} P</div>
-                              <div className="text-[10px] text-emerald-600">-{c.co2Saved} kg</div>
-                            </td>
-                            <td className="py-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setTopUpCustomer(c);
-                                  setTopUpAmount('');
-                                  setIsTopUpOpen(true);
-                                }}
-                                className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 rounded text-[11px] font-bold hover:bg-[#3f8f61] hover:text-white transition"
-                              >
-                                加值
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-slate-400 pb-2">
+                      <th className="pb-2">會員編號</th>
+                      <th className="pb-2">姓名 ｜ 電話</th>
+                      <th className="pb-2">儲值金餘額</th>
+                      <th className="pb-2">未歸還之衣袋編碼</th>
+                      <th className="pb-2">專屬習性 ｜ 備註</th>
+                      <th className="pb-2 text-center">借袋個數</th>
+                      <th className="pb-2 text-right">ESG點數 ｜ 累計碳減量</th>
+                      <th className="pb-2 text-center">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {customers
+                      .filter(c => c.name.includes(memberSearch) || c.phone.includes(memberSearch) || c.id.includes(memberSearch))
+                      .map(c => (
+                        <tr key={c.id} className="hover:bg-slate-50">
+                          <td className="py-3 font-mono font-bold text-slate-700">{c.id}</td>
+                          <td className="py-3">
+                            <div className="font-bold text-slate-800">{c.name}</div>
+                            <div className="text-[10px] text-slate-500">{c.phone}</div>
+                          </td>
+                          <td className="py-3 font-mono font-bold text-[#3f8f61]">${c.balance}</td>
+                          <td className="py-3">
+                            {c.borrowedBags.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {c.borrowedBags.map(bag => (
+                                  <span key={bag} className="font-mono text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
+                                    🏷️ {bag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[#3f8f61] font-semibold text-[10px]">✅ 無借袋</span>
+                            )}
+                          </td>
+                          <td className="py-3 max-w-[200px]">
+                            {editingHabitId === c.id ? (
+                              <div className="flex gap-1.5 items-center">
+                                <input 
+                                  type="text"
+                                  value={tempHabitText}
+                                  onChange={(e) => setTempHabitText(e.target.value)}
+                                  className="border rounded p-1 text-[11px] w-full focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 font-semibold"
+                                />
+                                <button 
+                                  onClick={() => handleSaveHabit(c.id)}
+                                  className="bg-emerald-600 text-white rounded px-2 py-1 text-[10px] font-black"
+                                >
+                                  存
+                                </button>
+                                <button 
+                                  onClick={() => setEditingHabitId(null)}
+                                  className="bg-slate-200 text-slate-700 rounded px-2 py-1 text-[10px]"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex justify-between items-center gap-1 group">
+                                <span className="text-slate-600 line-clamp-2">{c.habits || '無備註'}</span>
+                                <button 
+                                  onClick={() => {
+                                    setEditingHabitId(c.id);
+                                    setTempHabitText(c.habits || '');
+                                  }}
+                                  className="text-[#3f8f61] hover:underline font-bold opacity-0 group-hover:opacity-100 transition shrink-0 ml-1 text-[10px]"
+                                >
+                                  ✍️ 編輯
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 text-center font-bold">{c.borrowedBags.length}</td>
+                          <td className="py-3 text-right">
+                            <div className="font-bold">{c.esgPoints} P</div>
+                            <div className="text-[10px] text-emerald-600">-{c.co2Saved} kg</div>
+                          </td>
+                          <td className="py-3 text-center space-x-1 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTopUpCustomer(c);
+                                setTopUpAmount('');
+                                setIsTopUpOpen(true);
+                              }}
+                              className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[11px] font-bold hover:bg-[#3f8f61] hover:text-white transition"
+                            >
+                              加值
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
 
-          {/* 4. 衣物管理 */}
+          {/* ==========================================
+              4. 衣物管理
+              ========================================== */}
           {activeTab === 'checkout' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 h-full">
+              
               <div className="xl:col-span-7 flex flex-col gap-6">
+                
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-slate-700">👤 第一步：會員資料檢索</h3>
@@ -1063,6 +1160,9 @@ export default function App() {
                           儲值金餘額：<span className="text-emerald-700 font-extrabold text-sm">${selectedCustomer.balance} 元</span>
                           <span className="text-slate-300 mx-2">|</span>
                           ESG 累積積分：{selectedCustomer.esgPoints} P
+                        </div>
+                        <div className="text-[11px] text-emerald-900 font-medium">
+                          👤 顧客備註：<span className="font-semibold text-slate-700">{selectedCustomer.habits || '無備註'}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1211,9 +1311,12 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
               </div>
 
+              {/* 右側結帳欄 */}
               <div className="xl:col-span-5 flex flex-col gap-6">
+                
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                   <h3 className="text-sm font-bold text-slate-700 mb-3">🌿 生物溶劑與店鋪備註</h3>
                   <div className="space-y-4">
@@ -1278,25 +1381,29 @@ export default function App() {
                   <button
                     type="button"
                     onClick={handleCheckout}
-                    className="w-full bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 text-emerald-950 font-extrabold text-sm py-4 rounded-xl transition"
+                    className="w-full bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 text-emerald-950 font-extrabold text-sm py-4 rounded-xl transition shadow-md"
                   >
                     ⚡ 建立清洗單
                   </button>
                 </div>
+
               </div>
+
             </div>
           )}
 
-          {/* 5. 庫存管理 */}
+          {/* ==========================================
+              5. 庫存管理
+              ========================================== */}
           {activeTab === 'inventory' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-700">智慧物資與耗材庫存</h3>
                 <span className="text-xs text-slate-400">店鋪物資臨界預警</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {inventoryList.map((inv, idx) => (
-                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center">
+                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center transition hover:shadow-sm">
                     <div>
                       <div className="font-bold text-slate-800 text-sm">{inv.name}</div>
                       <div className="text-xs text-slate-400 mt-0.5">
@@ -1315,7 +1422,7 @@ export default function App() {
                           setInventoryList(updated);
                           showToast(`已成功為 ${inv.name} 補貨 50 單位`);
                         }}
-                        className="text-[10px] mt-1.5 px-2 py-0.5 bg-white border border-slate-200 hover:border-[#3f8f61] rounded text-slate-600 transition"
+                        className="text-[10px] mt-1.5 px-2 py-0.5 bg-white border border-slate-200 hover:border-[#3f8f61] rounded text-slate-600 transition font-bold"
                       >
                         補貨登記
                       </button>
@@ -1326,13 +1433,16 @@ export default function App() {
             </div>
           )}
 
-          {/* 6. 報表分析 */}
+          {/* ==========================================
+              6. 報表分析
+              ========================================== */}
           {activeTab === 'reports' && (
             <div className="space-y-6">
+              
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">📈 智慧環保衣袋 累計循環次數走勢</h3>
+                    <h3 className="text-base font-bold text-slate-800">📈 智慧環保衣袋 累計循環次數走勢 (折線圖)</h3>
                     <p className="text-xs text-slate-400">永續綠色包材轉換率與循環次數趨勢走勢圖</p>
                   </div>
                   <div className="bg-slate-100 rounded-lg p-1 flex gap-1">
@@ -1357,6 +1467,7 @@ export default function App() {
                       <line x1="40" y1="30" x2="470" y2="30" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="90" x2="470" y2="90" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="150" x2="470" y2="150" stroke="#f1f5f9" strokeWidth="1" />
+                      
                       <line x1="40" y1="15" x2="40" y2="175" stroke="#cbd5e1" strokeWidth="1" />
                       <line x1="40" y1="175" x2="470" y2="175" stroke="#cbd5e1" strokeWidth="1" />
 
@@ -1371,14 +1482,26 @@ export default function App() {
                         fill="url(#areaGrad)" 
                       />
 
-                      <polyline fill="none" stroke="#3f8f61" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" points={polylinePointsString} />
+                      <polyline
+                        fill="none"
+                        stroke="#3f8f61"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={polylinePointsString}
+                      />
 
                       {chartPoints.map((p, idx) => (
                         <g key={idx}>
                           <circle cx={p.x} cy={p.y} r="6" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
                           <circle cx={p.x} cy={p.y} r="2.5" fill="#3f8f61" />
-                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0f172a">{p.val}次</text>
-                          <text x={p.x} y="192" textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="semibold">{p.label}</text>
+                          
+                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0f172a">
+                            {p.val}次
+                          </text>
+                          <text x={p.x} y="192" textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="semibold">
+                            {p.label}
+                          </text>
                         </g>
                       ))}
                     </svg>
@@ -1386,6 +1509,7 @@ export default function App() {
                 </div>
               </div>
 
+              {/* 智慧客群再行銷 */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                 <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
                   <h3 className="text-sm font-bold text-slate-800">🎯 AI 會員智慧客群再行銷</h3>
@@ -1433,10 +1557,13 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* 7. 系統設定 */}
+          {/* ==========================================
+              7. 系統設定
+              ========================================== */}
           {activeTab === 'settings' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
               <h3 className="text-sm font-bold text-slate-700 pb-2 border-b border-slate-100">店鋪與系統常規設定</h3>
@@ -1511,7 +1638,7 @@ export default function App() {
           MODALS & OVERLAYS
           ========================================== */}
 
-      {/* 1. 快速歸還衣袋 Modal */}
+      {/* 1. 快速歸還衣袋銷帳之 Modal 彈窗 */}
       {isQuickReturnOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
@@ -1560,7 +1687,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 2. 包裝綁定衣袋 Modal */}
+      {/* 2. 包裝時掃描綁定衣袋的 Modal 彈窗 */}
       {isBagBindingModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
@@ -1608,7 +1735,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 3. 快速註冊會員 Modal */}
+      {/* 3. 快速註冊新會員的 Modal 彈窗 */}
       {isAddMemberOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
@@ -1646,13 +1773,13 @@ export default function App() {
                 <button 
                   type="button" 
                   onClick={() => setIsAddMemberOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2 rounded-xl"
+                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2.5 rounded-xl"
                 >
                   取消
                 </button>
                 <button 
                   type="submit" 
-                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2 rounded-xl"
+                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-xl"
                 >
                   建立並帶入
                 </button>
@@ -1662,7 +1789,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. 自訂衣物 Modal */}
+      {/* 4. 自訂衣物項目 Modal 彈窗 */}
       {isCustomItemOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
@@ -1677,7 +1804,7 @@ export default function App() {
                 <input 
                   type="text" 
                   required
-                  placeholder="例：蕾絲長裙、泰迪熊玩偶"
+                  placeholder="例：蕾絲長裙、泰帝熊玩偶"
                   value={customItemName}
                   onChange={(e) => setCustomItemName(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
@@ -1700,13 +1827,13 @@ export default function App() {
                 <button 
                   type="button" 
                   onClick={() => setIsCustomItemOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2 rounded-xl"
+                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2.5 rounded-xl"
                 >
                   取消
                 </button>
                 <button 
                   type="submit" 
-                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2 rounded-xl"
+                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-xl"
                 >
                   新增至洗籃
                 </button>
@@ -1716,7 +1843,7 @@ export default function App() {
         </div>
       )}
 
-      {/* 5. 會員儲值 Modal */}
+      {/* 5. 會員儲值加值金額 Modal 彈窗 */}
       {isTopUpOpen && topUpCustomer && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
@@ -1765,6 +1892,7 @@ export default function App() {
         </div>
       )}
 
+      {/* 吐司訊息提示樣式 */}
       {toastMessage && (
         <div className="fixed bottom-4 right-4 bg-emerald-600 text-white rounded-xl py-3 px-5 shadow-2xl z-50 flex items-center gap-2 font-semibold text-xs">
           <span>✨</span>
