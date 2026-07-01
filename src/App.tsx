@@ -82,7 +82,7 @@ export default function App() {
   const [marketingSegment, setMarketingSegment] = useState('eco_fans');
   const [customSmsContent, setCustomSmsContent] = useState('');
   const [campaignHistory, setCampaignHistory] = useState([
-    { id: 'CAM-01', name: '環保減碳回饋祭', segment: '環保急先鋒', date: '2026-06-10', count: 3, content: '親愛的綠色會員您好！帶回您手上的「智慧環保衣袋」至店內回收或取件歸還，可直接獲得 50 點 ESG 綠色點數，共同守護地球。', status: '已發送' },
+    { id: 'CAM-01', name: '環保減碳回饋祭', segment: '環保急先鋒', date: '2026-06-10', count: 3, content: '親愛的綠色會員您好！帶回您手上的「智慧環保衣袋」至店內回收或取件歸還，可直接獲得 50 點 配客點，共同守護地球。', status: '已發送' },
     { id: 'CAM-02', name: '梅雨季烘乾貼心提醒', segment: '全體會員', date: '2026-06-18', count: 5, content: '最近連日大雨，家裡衣服曬不乾嗎？綠潔為您提供100%環保烘乾與抗過敏除蟎清洗服務！', status: '已發送' }
   ]);
 
@@ -402,7 +402,7 @@ export default function App() {
         }));
       }
 
-      showToast(`♻️ 衣袋 ${targetBag} 快速歸還成功！歸還會員：${foundMember.name} (+50 ESG 點數)`);
+      showToast(`♻️ 衣袋 ${targetBag} 快速歸還成功！歸還會員：${foundMember.name} (+50 配客點)`);
     } else {
       showToast(`⚠️ 找不到此衣袋借用記錄，或此衣袋已被歸還。`);
     }
