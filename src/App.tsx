@@ -1020,7 +1020,7 @@ export default function App() {
                       <th className="pb-2">未歸還之衣袋編碼</th>
                       <th className="pb-2">專屬習性 ｜ 備註</th>
                       <th className="pb-2 text-center">借袋個數</th>
-                      <th className="pb-2 text-right">ESG點數 ｜ 累計碳減量</th>
+                      <th className="pb-2 text-right">配客點 ｜ 累計碳減量</th>
                       <th className="pb-2 text-center">操作</th>
                     </tr>
                   </thead>
@@ -1159,7 +1159,7 @@ export default function App() {
                         <div className="text-xs text-emerald-800 font-bold">
                           儲值金餘額：<span className="text-emerald-700 font-extrabold text-sm">${selectedCustomer.balance} 元</span>
                           <span className="text-slate-300 mx-2">|</span>
-                          ESG 累積積分：{selectedCustomer.esgPoints} P
+                          累積配客點：{selectedCustomer.esgPoints} P
                         </div>
                         <div className="text-[11px] text-emerald-900 font-medium">
                           👤 顧客備註：<span className="font-semibold text-slate-700">{selectedCustomer.habits || '無備註'}</span>
@@ -1664,7 +1664,7 @@ export default function App() {
               </div>
 
               <div className="text-[11px] text-slate-500 leading-relaxed">
-                ※ 歸還成功後，系統會自動在顧客借用名冊中銷帳，相關的洗衣訂單會標記為「已取件」，並為會員帳戶增發 **+50 ESG 綠色點數**！
+                ※ 歸還成功後，系統會自動在顧客借用名冊中銷帳，相關的洗衣訂單會標記為「已取件」，並為會員帳戶增發 **+50 配客點**！
               </div>
 
               <div className="flex gap-3 pt-4">
