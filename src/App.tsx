@@ -25,25 +25,22 @@ const INITIAL_ORDERS = [
 ];
 
 export default function App() {
-  // 側邊欄切換：dashboard (首頁), orders (訂單管理), members (客戶管理), checkout (衣物管理/收銀), inventory (庫存管理), reports (報表分析), settings (系統設定)
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
   const [orders, setOrders] = useState(INITIAL_ORDERS);
   const [bagCirculationCount, setBagCirculationCount] = useState(584);
-  const [chartView, setChartView] = useState('月'); // 報表分頁的衣袋循環圖
-  const [dashboardChartView, setDashboardChartView] = useState('月'); // 首頁的營收趨勢圖
-  const [toastMessage, setToastMessage] = useState(null);
+  const [chartView, setChartView] = useState('月');
+  const [dashboardChartView, setDashboardChartView] = useState('月');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 收銀台 (衣物管理分頁) 狀態
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [searchPhone, setSearchPhone] = useState('');
-  const [orderItems, setOrderItems] = useState([]);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
   const [useEcoSolvent, setEcoSolvent] = useState(true);
   const [orderRemark, setOrderRemark] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('現金');
 
-  // 各種控制彈窗
   const [isCustomItemOpen, setIsCustomItemOpen] = useState(false);
   const [customItemName, setCustomItemName] = useState('');
   const [customItemPrice, setCustomItemPrice] = useState('');
@@ -56,10 +53,9 @@ export default function App() {
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPhone, setNewMemberPhone] = useState('');
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-  const [topUpCustomer, setTopUpCustomer] = useState(null);
+  const [topUpCustomer, setTopUpCustomer] = useState<any>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
 
-  // 庫存狀態
   const [inventoryList, setInventoryList] = useState([
     { id: 'INV-01', name: '智慧循環衣袋 (小)', stock: 120, minStock: 20, unit: '個' },
     { id: 'INV-02', name: '智慧循環衣袋 (大)', stock: 85, minStock: 15, unit: '個' },
@@ -67,7 +63,6 @@ export default function App() {
     { id: 'INV-04', name: '高溫殺菌防縐蒸汽水', stock: 60, minStock: 15, unit: '公升' }
   ]);
 
-  // 營運設定狀態
   const [settings, setSettings] = useState({
     storeName: '綠潔智慧乾洗 - 台北忠孝旗艦店',
     phone: '02-2771-0000',
@@ -76,7 +71,6 @@ export default function App() {
     isAutoPrintLabel: true
   });
 
-  // 再行銷/客群推播
   const [marketingSegment, setMarketingSegment] = useState('eco_fans');
   const [customSmsContent, setCustomSmsContent] = useState('');
   const [campaignHistory, setCampaignHistory] = useState([
@@ -84,19 +78,14 @@ export default function App() {
     { id: 'CAM-02', name: '梅雨季烘乾貼心提醒', segment: '全體會員', date: '2026-06-18', count: 5, content: '最近連日大雨，家裡衣服曬不乾嗎？綠潔為您提供100%環保烘乾與抗過敏除蟎清洗服務！', status: '已發送' }
   ]);
 
-  // 洗衣狀態篩選與多選
   const [orderStatusFilter, setOrderStatusFilter] = useState('全部');
-  const [selectedOrderIds, setSelectedOrderIds] = useState([]);
-
-  // 會員篩選
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [memberSearch, setMemberSearch] = useState('');
 
-  // 定義被篩選後的訂單資料，供表格渲染與多選勾收使用
   const filteredOrders = orderStatusFilter === '全部'
     ? orders
     : orders.filter(o => o.status === orderStatusFilter);
 
-  // 定義再行銷推播按鈕的處理函數
   const handleSendCampaign = () => {
     if (!customSmsContent.trim()) {
       showToast('⚠️ 推播內容不可為空！');
@@ -115,7 +104,7 @@ export default function App() {
     showToast('✉️ 智慧再行銷推播訊息已通過 Line / SMS 發送完畢！');
   };
 
-  const showToast = (msg) => {
+  const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
@@ -132,7 +121,6 @@ export default function App() {
     }
   }, [marketingSegment]);
 
-  // 會員搜尋
   const handleCustomerSearch = () => {
     const found = customers.find(c => c.phone.includes(searchPhone) || c.name.includes(searchPhone) || c.id.includes(searchPhone));
     if (found) {
@@ -143,8 +131,7 @@ export default function App() {
     }
   };
 
-  // 快速新增自訂衣物
-  const handleAddCustomItem = (e) => {
+  const handleAddCustomItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!customItemName || !customItemPrice) {
       showToast('請填寫完整衣服項目與價格！');
@@ -175,14 +162,13 @@ export default function App() {
     showToast(`已成功新增自訂衣服項目「${customItemName}」`);
   };
 
-  // 購物車變更與收銀
-  const updateCartItem = (index, field, value) => {
+  const updateCartItem = (index: number, field: string, value: any) => {
     const updated = [...orderItems];
     updated[index][field] = value;
     setOrderItems(updated);
   };
 
-  const removeCartItem = (index) => {
+  const removeCartItem = (index: number) => {
     const updated = [...orderItems];
     updated.splice(index, 1);
     setOrderItems(updated);
@@ -240,7 +226,7 @@ export default function App() {
       setCustomers(updatedCust);
       
       if (paymentMethod === '儲值金') {
-        setSelectedCustomer(prev => ({ ...prev, balance: prev.balance - subtotal }));
+        setSelectedCustomer((prev: any) => ({ ...prev, balance: prev.balance - subtotal }));
       }
     }
 
@@ -252,8 +238,7 @@ export default function App() {
     showToast(`🎉 訂單 ${orderId} 建立完成！`);
   };
 
-  // 狀態變更與智慧衣袋借還
-  const handleSingleStatusChange = (orderId, targetStatus) => {
+  const handleSingleStatusChange = (orderId: string, targetStatus: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
@@ -272,7 +257,7 @@ export default function App() {
     showToast(`訂單 ${orderId} 已變更為「${targetStatus}」`);
   };
 
-  const handleBatchStatusChange = (targetStatus) => {
+  const handleBatchStatusChange = (targetStatus: string) => {
     if (selectedOrderIds.length === 0) return;
 
     const unbondedMemberOrders = orders.filter(o => selectedOrderIds.includes(o.id) && o.memberId !== 'GUEST' && !o.bagId);
@@ -292,13 +277,13 @@ export default function App() {
     showToast(`成功批次變更狀態為「${targetStatus}」`);
   };
 
-  const openBagBindingModal = (orderId) => {
+  const openBagBindingModal = (orderId: string) => {
     setBindingOrderId(orderId);
     setTempBagId('');
     setIsBagBindingModalOpen(true);
   };
 
-  const handleBindBagSubmit = (e) => {
+  const handleBindBagSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tempBagId.trim()) return;
 
@@ -331,7 +316,7 @@ export default function App() {
     showToast(`📦 訂單 ${order.id} 已完成包裝並綁定衣袋 ${bagIdUpper}！`);
   };
 
-  const handleCustomerPickup = (orderId) => {
+  const handleCustomerPickup = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
@@ -363,13 +348,12 @@ export default function App() {
     }
   };
 
-  // 快速歸還入口
-  const handleQuickReturnSubmit = (e) => {
+  const handleQuickReturnSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickReturnBagId.trim()) return;
 
     const targetBag = quickReturnBagId.trim().toUpperCase();
-    let foundMember = null;
+    let foundMember: any = null;
 
     const updatedCustomers = customers.map(c => {
       if (c.borrowedBags.includes(targetBag)) {
@@ -397,9 +381,9 @@ export default function App() {
       setBagCirculationCount(prev => prev + 1);
       
       if (selectedCustomer && selectedCustomer.id === foundMember.id) {
-        setSelectedCustomer(prev => ({
+        setSelectedCustomer((prev: any) => ({
           ...prev,
-          borrowedBags: prev.borrowedBags.filter(b => b !== targetBag),
+          borrowedBags: prev.borrowedBags.filter((b: string) => b !== targetBag),
           esgPoints: prev.esgPoints + 50
         }));
       }
@@ -413,8 +397,7 @@ export default function App() {
     setIsQuickReturnOpen(false);
   };
 
-  // 會員儲值加值
-  const handleTopUpSubmit = (e) => {
+  const handleTopUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(topUpAmount);
     if (isNaN(amt) || amt <= 0) {
@@ -431,7 +414,7 @@ export default function App() {
     setCustomers(updatedCust);
 
     if (selectedCustomer && selectedCustomer.id === topUpCustomer.id) {
-      setSelectedCustomer(prev => ({
+      setSelectedCustomer((prev: any) => ({
         ...prev,
         balance: prev.balance + amt
       }));
@@ -442,8 +425,7 @@ export default function App() {
     showToast(`儲值成功！${topUpCustomer.name} 已成功儲值 $${amt} 元。`);
   };
 
-  // 新增會員
-  const handleCreateMember = (e) => {
+  const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberName || !newMemberPhone) return;
 
@@ -469,7 +451,6 @@ export default function App() {
     showToast(`新會員 ${newCust.name} 創建成功！`);
   };
 
-  // 衣袋循環折線圖數據 (報表分析頁面)
   const getChartData = () => {
     if (chartView === '月') {
       return [
@@ -499,7 +480,6 @@ export default function App() {
   const chartPoints = getChartData();
   const polylinePointsString = chartPoints.map(p => `${p.x},${p.y}`).join(' ');
 
-  // 實時動態計算：首頁「營收趨勢」圖表數據點 (修正：保證所有點與折線完全動態對齊，不跑位)
   const getDashboardChartData = () => {
     if (dashboardChartView === '月') {
       return [
@@ -533,11 +513,10 @@ export default function App() {
     <div className="flex h-screen bg-[#f4f7f6] font-sans text-slate-800 overflow-hidden">
       
       {/* ==========================================
-          左側主選單 (風格完全看齊 image_9ac926.jpg)
+          左側主選單
           ========================================== */}
       <aside className="w-64 bg-[#3f8f61] text-white flex flex-col justify-between shadow-xl shrink-0 z-10">
         <div>
-          {/* Logo 標題 */}
           <div className="p-6 bg-[#327750] flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-xl text-white">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -550,7 +529,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 備援快速按鈕 */}
           <div className="px-4 py-3 space-y-2 border-b border-white/10 bg-[#378156]">
             <button
               type="button"
@@ -574,7 +552,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* 導航功能清單 (7 大分頁) */}
           <nav className="px-3 py-4 space-y-1">
             {[
               { id: 'dashboard', name: '首頁', icon: '🏠' },
@@ -615,7 +592,6 @@ export default function App() {
           ========================================== */}
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
         
-        {/* 頂部輕量級 Header */}
         <header className="bg-white border-b border-slate-200 py-4 px-8 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-slate-800">
@@ -634,16 +610,11 @@ export default function App() {
           </div>
         </header>
 
-        {/* 核心內容渲染 */}
         <div className="p-8 flex-1 min-h-0">
           
-          {/* ====================================================================================
-              1. 首頁 (對標 image_9ac926.jpg 第一頁看板設計，並修復點位對齊)
-              ==================================================================================== */}
+          {/* 1. 首頁看板 */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              
-              {/* 4 大指標卡片 */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
                   <div className="text-slate-400 text-xs font-semibold">今日訂單</div>
@@ -667,10 +638,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 折線圖與比例圓環圖 (修正：首頁折線圖點位與折線對齊，並新增日期切換) */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                
-                {/* 營收趨勢 (折線圖 - 已修復對齊並支援時間切換) */}
                 <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="text-sm font-bold text-slate-700">營收趨勢</h3>
@@ -693,16 +661,13 @@ export default function App() {
                   </div>
                   
                   <div className="relative bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    {/* SVG 趨勢線圖 */}
                     <svg className="w-full h-48 overflow-visible" viewBox="0 0 500 150">
-                      {/* 背景輔助網格線 */}
                       <line x1="40" y1="30" x2="470" y2="30" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="70" x2="470" y2="70" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="110" x2="470" y2="110" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="130" x2="470" y2="130" stroke="#cbd5e1" strokeWidth="1" />
                       <line x1="40" y1="15" x2="40" y2="130" stroke="#cbd5e1" strokeWidth="1" />
 
-                      {/* 繪製底層漸層填充區域 */}
                       <defs>
                         <linearGradient id="dbAreaGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#3f8f61" stopOpacity="0.25" />
@@ -714,7 +679,6 @@ export default function App() {
                         fill="url(#dbAreaGrad)"
                       />
 
-                      {/* 精準對齊的折線 - 使用 polyline 確保不產生貝氏曲線控制點偏移 */}
                       <polyline
                         fill="none"
                         stroke="#3f8f61"
@@ -724,85 +688,27 @@ export default function App() {
                         points={dbPolylinePoints}
                       />
                       
-                      {/* 資料標記點與數值標記 */}
                       {dbPoints.map((p, idx) => (
                         <g key={idx}>
-                          {/* 資料點外部白環與內部綠點 */}
                           <circle cx={p.x} cy={p.y} r="5.5" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
                           <circle cx={p.x} cy={p.y} r="2" fill="#3f8f61" />
-                          
-                          {/* 顯示實時數值 (與點位置完美對齊) */}
-                          <text 
-                            x={p.x} 
-                            y={p.y - 12} 
-                            textAnchor="middle" 
-                            fontSize="10" 
-                            fontWeight="bold" 
-                            fill="#0f172a"
-                          >
-                            {p.val}
-                          </text>
-
-                          {/* X 軸刻度標籤 */}
-                          <text 
-                            x={p.x} 
-                            y="145" 
-                            textAnchor="middle" 
-                            fontSize="10" 
-                            fill="#94a3b8" 
-                            fontWeight="semibold"
-                          >
-                            {p.label}
-                          </text>
+                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0f172a">{p.val}</text>
+                          <text x={p.x} y="145" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="semibold">{p.label}</text>
                         </g>
                       ))}
                     </svg>
                   </div>
                 </div>
 
-                {/* 訂單狀態比例 (圓環圖) */}
                 <div className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-700">訂單狀態比例</h3>
+                  <h3 className="text-sm font-bold text-slate-700">訂開狀態比例</h3>
                   <div className="flex items-center justify-between">
-                    {/* SVG Donut Chart */}
                     <div className="relative w-32 h-32 shrink-0">
                       <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <path
-                          className="text-slate-100"
-                          strokeWidth="4"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-[#3f8f61]"
-                          strokeDasharray="60, 100"
-                          strokeWidth="4.5"
-                          strokeLinecap="round"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        />
-                        <path
-                          className="text-amber-500"
-                          strokeDasharray="25, 100"
-                          strokeWidth="4.5"
-                          strokeLinecap="round"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          strokeDashoffset="-60"
-                        />
-                        <path
-                          className="text-blue-500"
-                          strokeDasharray="15, 100"
-                          strokeWidth="4.5"
-                          strokeLinecap="round"
-                          stroke="currentColor"
-                          fill="none"
-                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                          strokeDashoffset="-85"
-                        />
+                        <path className="text-slate-100" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path className="text-[#3f8f61]" strokeDasharray="60, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path className="text-amber-500" strokeDasharray="25, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" strokeDashoffset="-60" />
+                        <path className="text-blue-500" strokeDasharray="15, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" strokeDashoffset="-85" />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-xl font-bold text-slate-800">128</span>
@@ -826,10 +732,8 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-
               </div>
 
-              {/* 客戶資料 (完全復刻圖中的表格) */}
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                 <h3 className="text-sm font-bold text-slate-700 mb-4">客戶資料</h3>
                 <div className="overflow-x-auto">
@@ -868,13 +772,10 @@ export default function App() {
                   </table>
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* ====================================================================================
-              2. 訂單管理 (原洗衣狀態管理功能)
-              ==================================================================================== */}
+          {/* 2. 訂單管理 */}
           {activeTab === 'orders' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
               <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center border-b border-slate-100 pb-3">
@@ -899,7 +800,7 @@ export default function App() {
                 </div>
 
                 {selectedOrderIds.length > 0 && (
-                  <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 animate-fade-in text-xs">
+                  <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 text-xs">
                     <span className="font-bold text-[#3f8f61]">已選 {selectedOrderIds.length} 筆：</span>
                     {['清洗中', '整燙中', '包裝中', '已取件'].map(state => (
                       <button
@@ -936,7 +837,7 @@ export default function App() {
                       <th className="pb-2">衣物項目 & 顏色</th>
                       <th className="pb-2">當前狀態 ｜ 包裝袋</th>
                       <th className="pb-2">費用</th>
-                      <th className="pb-2 text-center">狀態調整(自由切換)</th>
+                      <th className="pb-2 text-center">狀態調整</th>
                       <th className="pb-2 text-center">流程操作</th>
                     </tr>
                   </thead>
@@ -962,7 +863,7 @@ export default function App() {
                           <div className="text-[10px] text-slate-400 font-mono">{order.memberId}</div>
                         </td>
                         <td className="py-3 text-slate-600">
-                          {order.items.map((it, idx) => (
+                          {order.items.map((it: any, idx: number) => (
                             <div key={idx} className="text-[11px]">
                               {it.type} ({it.color}) × {it.count}
                             </div>
@@ -1036,12 +937,9 @@ export default function App() {
             </div>
           )}
 
-          {/* ====================================================================================
-              3. 客戶管理 (原數位會員管理，整合儲值金與未還衣袋)
-              ==================================================================================== */}
+          {/* 3. 客戶管理 */}
           {activeTab === 'members' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
-              
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-base font-bold text-slate-800">數位會員名冊與帳務管理</h3>
@@ -1117,20 +1015,13 @@ export default function App() {
                   </table>
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* ====================================================================================
-              4. 衣物管理 (即原收銀、洗籃登記 POS 功能)
-              ==================================================================================== */}
+          {/* 4. 衣物管理 */}
           {activeTab === 'checkout' && (
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 h-full">
-              
-              {/* 左側資訊填寫欄位 */}
               <div className="xl:col-span-7 flex flex-col gap-6">
-                
-                {/* 步驟一：連結數位會員 */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-bold text-slate-700">👤 第一步：會員資料檢索</h3>
@@ -1162,7 +1053,7 @@ export default function App() {
                   </div>
 
                   {selectedCustomer && (
-                    <div className="mt-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex justify-between items-center animate-fade-in">
+                    <div className="mt-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex justify-between items-center text-xs">
                       <div className="space-y-1">
                         <div>
                           <span className="font-extrabold text-slate-900 text-sm">{selectedCustomer.name}</span>
@@ -1192,7 +1083,6 @@ export default function App() {
                   )}
                 </div>
 
-                {/* 步驟二：登記衣物種類 */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                   <h3 className="text-sm font-bold text-slate-700 mb-3">👕 第二步：登記衣服種類</h3>
                   <div className="grid grid-cols-4 gap-2">
@@ -1239,7 +1129,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 步驟三：洗衣購物籃 */}
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex-1 flex flex-col min-h-[300px]">
                   <h3 className="text-sm font-bold text-slate-700 mb-3">🧺 第三步：洗衣購物籃細節</h3>
                   {orderItems.length === 0 ? (
@@ -1322,12 +1211,9 @@ export default function App() {
                     </div>
                   )}
                 </div>
-
               </div>
 
-              {/* 右側結帳欄 */}
               <div className="xl:col-span-5 flex flex-col gap-6">
-                
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                   <h3 className="text-sm font-bold text-slate-700 mb-3">🌿 生物溶劑與店鋪備註</h3>
                   <div className="space-y-4">
@@ -1346,7 +1232,7 @@ export default function App() {
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-1">整單補充備註</label>
                       <textarea 
-                        rows="2" 
+                        rows={2} 
                         placeholder="例：7/1中午前取..."
                         value={orderRemark}
                         onChange={(e) => setOrderRemark(e.target.value)}
@@ -1397,15 +1283,11 @@ export default function App() {
                     ⚡ 建立清洗單
                   </button>
                 </div>
-
               </div>
-
             </div>
           )}
 
-          {/* ====================================================================================
-              5. 庫存管理 (新分頁)
-              ==================================================================================== */}
+          {/* 5. 庫存管理 */}
           {activeTab === 'inventory' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
               <div className="flex justify-between items-center pb-3 border-b border-slate-100">
@@ -1444,17 +1326,13 @@ export default function App() {
             </div>
           )}
 
-          {/* ====================================================================================
-              6. 報表分析 (原折線圖與 ESG 報表分析)
-              ==================================================================================== */}
+          {/* 6. 報表分析 */}
           {activeTab === 'reports' && (
             <div className="space-y-6">
-              
-              {/* 衣袋使用次數「折線圖」顯示 */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">📈 智慧環保衣袋 累計循環次數走勢 (折線圖)</h3>
+                    <h3 className="text-base font-bold text-slate-800">📈 智慧環保衣袋 累計循環次數走勢</h3>
                     <p className="text-xs text-slate-400">永續綠色包材轉換率與循環次數趨勢走勢圖</p>
                   </div>
                   <div className="bg-slate-100 rounded-lg p-1 flex gap-1">
@@ -1473,14 +1351,12 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* SVG 折線圖 */}
                 <div className="flex justify-center bg-slate-50 rounded-xl p-4 border border-slate-100">
                   <div className="relative w-full max-w-2xl">
                     <svg className="w-full h-64 overflow-visible" viewBox="0 0 500 200">
                       <line x1="40" y1="30" x2="470" y2="30" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="90" x2="470" y2="90" stroke="#f1f5f9" strokeWidth="1" />
                       <line x1="40" y1="150" x2="470" y2="150" stroke="#f1f5f9" strokeWidth="1" />
-                      
                       <line x1="40" y1="15" x2="40" y2="175" stroke="#cbd5e1" strokeWidth="1" />
                       <line x1="40" y1="175" x2="470" y2="175" stroke="#cbd5e1" strokeWidth="1" />
 
@@ -1495,41 +1371,14 @@ export default function App() {
                         fill="url(#areaGrad)" 
                       />
 
-                      <polyline
-                        fill="none"
-                        stroke="#3f8f61"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={polylinePointsString}
-                      />
+                      <polyline fill="none" stroke="#3f8f61" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" points={polylinePointsString} />
 
                       {chartPoints.map((p, idx) => (
                         <g key={idx}>
                           <circle cx={p.x} cy={p.y} r="6" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
                           <circle cx={p.x} cy={p.y} r="2.5" fill="#3f8f61" />
-                          
-                          <text 
-                            x={p.x} 
-                            y={p.y - 12} 
-                            textAnchor="middle" 
-                            fontSize="11" 
-                            fontWeight="bold" 
-                            fill="#0f172a"
-                          >
-                            {p.val}次
-                          </text>
-
-                          <text 
-                            x={p.x} 
-                            y="192" 
-                            textAnchor="middle" 
-                            fontSize="11" 
-                            fill="#64748b" 
-                            fontWeight="semibold"
-                          >
-                            {p.label}
-                          </text>
+                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0f172a">{p.val}次</text>
+                          <text x={p.x} y="192" textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="semibold">{p.label}</text>
                         </g>
                       ))}
                     </svg>
@@ -1537,7 +1386,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 智慧客群再行銷 */}
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                 <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
                   <h3 className="text-sm font-bold text-slate-800">🎯 AI 會員智慧客群再行銷</h3>
@@ -1556,7 +1404,7 @@ export default function App() {
                     ))}
                   </div>
                   <textarea
-                    rows="4"
+                    rows={4}
                     value={customSmsContent}
                     onChange={(e) => setCustomSmsContent(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs leading-relaxed focus:outline-none"
@@ -1585,13 +1433,10 @@ export default function App() {
                   </div>
                 </div>
               </div>
-
             </div>
           )}
 
-          {/* ====================================================================================
-              7. 系統設定 (新分頁)
-              ==================================================================================== */}
+          {/* 7. 系統設定 */}
           {activeTab === 'settings' && (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
               <h3 className="text-sm font-bold text-slate-700 pb-2 border-b border-slate-100">店鋪與系統常規設定</h3>
@@ -1627,7 +1472,7 @@ export default function App() {
                 <div className="space-y-2 md:col-span-2">
                   <label className="block text-xs font-semibold text-slate-500">LINE 自動通知範本</label>
                   <textarea 
-                    rows="3"
+                    rows={3}
                     value={settings.lineNotificationTemplate}
                     onChange={(e) => setSettings({ ...settings, lineNotificationTemplate: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none leading-relaxed"
@@ -1663,12 +1508,12 @@ export default function App() {
       </main>
 
       {/* ==========================================
-          MODALS & OVERLAYS (全部使用 z-50 置於最頂層)
+          MODALS & OVERLAYS
           ========================================== */}
 
-      {/* 1. 快速歸還衣袋銷帳之 Modal 彈窗 (一鍵現場掃描歸還) */}
+      {/* 1. 快速歸還衣袋 Modal */}
       {isQuickReturnOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
@@ -1715,9 +1560,9 @@ export default function App() {
         </div>
       )}
 
-      {/* 2. 包裝時掃描綁定衣袋的 Modal 彈窗 */}
+      {/* 2. 包裝綁定衣袋 Modal */}
       {isBagBindingModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-800">📦 洗畢包裝 ｜ 智慧環保衣袋綁定</h3>
@@ -1763,9 +1608,9 @@ export default function App() {
         </div>
       )}
 
-      {/* 3. 快速註冊新會員的 Modal 彈窗 */}
+      {/* 3. 快速註冊會員 Modal */}
       {isAddMemberOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-800">👤 快速註冊數位會員</h3>
@@ -1817,9 +1662,9 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. 自訂衣物項目 Modal 彈窗 */}
+      {/* 4. 自訂衣物 Modal */}
       {isCustomItemOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-800">➕ 新增自訂衣服項目</h3>
@@ -1871,9 +1716,9 @@ export default function App() {
         </div>
       )}
 
-      {/* 5. 會員儲值加值金額 Modal 彈窗 */}
+      {/* 5. 會員儲值 Modal */}
       {isTopUpOpen && topUpCustomer && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-800">💳 會員儲值加值中心</h3>
@@ -1920,9 +1765,8 @@ export default function App() {
         </div>
       )}
 
-      {/* 吐司訊息提示樣式 */}
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-emerald-600 text-white rounded-xl py-3 px-5 shadow-2xl z-50 flex items-center gap-2 font-semibold text-xs animate-fade-in">
+        <div className="fixed bottom-4 right-4 bg-emerald-600 text-white rounded-xl py-3 px-5 shadow-2xl z-50 flex items-center gap-2 font-semibold text-xs">
           <span>✨</span>
           {toastMessage}
         </div>
