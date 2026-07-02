@@ -210,7 +210,8 @@ export default function App() {
       material: '其他',
       treatment: '標準清洗',
       color: '白色',
-      remarks: ''
+      remarks: '',
+      garmentId: ''
     };
 
     setOrderItems([...orderItems, newCustomItem]);
@@ -258,7 +259,7 @@ export default function App() {
       memberId: selectedCustomer ? selectedCustomer.id : 'GUEST',
       customerName: selectedCustomer ? selectedCustomer.name : '散客/非會員',
       customerPhone: selectedCustomer ? selectedCustomer.phone : '-',
-      items: orderItems.map(item => ({ type: item.name, count: item.count, price: item.price, color: item.color })),
+      items: orderItems.map(item => ({ type: item.name, count: item.count, price: item.price, color: item.color, garmentId: item.garmentId || '未綁定'})),
       total: subtotal,
       status: '清洗中',
       bagId: '',
@@ -964,9 +965,13 @@ export default function App() {
                           <div className="text-[10px] text-slate-400 font-mono">{order.memberId}</div>
                         </td>
                         <td className="py-3 text-slate-600">
-                          {order.items.map((it, idx) => (
-                            <div key={idx} className="text-[11px]">
-                              {it.type} ({it.color}) × {it.count}
+                          {order.items.map((it: any, idx: number) => (
+                            <div key={idx} className="text-[11px] mb-1">
+                              <span className="font-bold text-slate-800">{it.type} ({it.color}) × {it.count}</span>
+                              {/* 🌟 顯示衣服專屬編號 */}
+                              <div className="font-mono text-[10px] text-emerald-600 bg-emerald-50 inline-block px-1 rounded ml-1 border border-emerald-100">
+                                碼: {it.garmentId || '未綁定'}
+                              </div>
                             </div>
                           ))}
                         </td>
@@ -1011,7 +1016,14 @@ export default function App() {
                                 onClick={() => {
                                   const updated = orders.map(o => o.id === order.id ? { ...o, lineSent: true } : o);
                                   setOrders(updated);
-                                  showToast(`💬 Line取件通知已傳送：用袋【${order.bagId}】還件`);
+                                  
+                                  // 🌟 將該訂單內所有的衣服專屬編號整理出來
+                                  const allGarmentIds = order.items
+                                    .map((it: any) => it.garmentId)
+                                    .filter((id: string) => id && id !== '未綁定')
+                                    .join(', ');
+
+                                  showToast(`💬 Line取件通知已傳送：用袋【${order.bagId}】。包含衣物編號: [${allGarmentIds || '無'}]`);
                                 }}
                                 className={`px-2 py-1 rounded text-[11px] font-bold transition ${
                                   order.lineSent ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
@@ -1304,7 +1316,8 @@ export default function App() {
                               material: '純棉',
                               treatment: '標準清洗',
                               color: '白色', 
-                              remarks: ''
+                              remarks: '',
+                              garmentId: ''
                             }]);
                           }
                         }}
@@ -1351,7 +1364,17 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-4 gap-2 pt-1.5 border-t border-slate-200/40 text-[11px]">
+                          <div className="grid grid-cols-5 gap-2 pt-1.5 border-t border-slate-200/40 text-[11px]">
+                            <div>
+                              <label className="block text-emerald-600 font-bold mb-0.5">專屬編號(可掃描)</label>
+                              <input 
+                                type="text"
+                                placeholder="請掃描條碼..."
+                                value={item.garmentId || ''}
+                                onChange={(e) => updateCartItem(index, 'garmentId', e.target.value)}
+                                className="w-full bg-emerald-50 border border-emerald-200 rounded p-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-emerald-800"
+                              />
+                            </div>
                             <div>
                               <label className="block text-slate-400 mb-0.5">顏色</label>
                               <select 
