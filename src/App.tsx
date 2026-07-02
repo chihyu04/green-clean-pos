@@ -1028,7 +1028,7 @@ export default function App() {
                                   order.lineSent ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
                                 }`}
                               >
-                                {order.lineSent ? '已傳通知' : '傳Line通知'}
+                                {order.lineSent ? '已傳通知' : '傳送通知'}
                               </button>
                               <button
                                 type="button"
