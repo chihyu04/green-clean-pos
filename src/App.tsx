@@ -18,10 +18,10 @@ const ITEM_CATEGORIES = [
 ];
 
 const INITIAL_ORDERS = [
-  { id: 'ORD-2026-0001', memberId: 'MEM-0001', customerName: '陳美玲', customerPhone: '0912-345-678', items: [{ type: '西裝外套', count: 1, price: 250, color: '黑色' }, { type: '襯衫/T恤', count: 2, price: 100, color: '白色' }], total: 450, status: '包裝中', bagId: '', date: '2026-06-27', lineSent: false, paymentMethod: '儲值金' },
-  { id: 'ORD-2026-0002', memberId: 'MEM-0003', customerName: '張雅婷', customerPhone: '0935-777-888', items: [{ type: '高級禮服', count: 1, price: 600, color: '紅色' }], total: 600, status: '待取件', bagId: 'BAG-1024', date: '2026-06-27', lineSent: true, paymentMethod: '儲值金' },
-  { id: 'ORD-2026-0003', memberId: 'MEM-0002', customerName: '林志明', customerPhone: '0928-111-222', items: [{ type: '長褲/裙子', count: 2, price: 120, color: '藍色' }], total: 240, status: '清洗中', bagId: '', date: '2026-06-26', lineSent: false, paymentMethod: '現金' },
-  { id: 'ORD-2026-0004', memberId: 'MEM-0004', customerName: '王大同', customerPhone: '0988-555-444', items: [{ type: '羽絨大衣', count: 1, price: 450, color: '灰色' }], total: 450, status: '已取件', bagId: 'BAG-9901', date: '2026-06-25', lineSent: true, paymentMethod: '信用卡' },
+  { id: 'ORD-2026-0001', memberId: 'MEM-0001', customerName: '陳美玲', customerPhone: '0912-345-678', items: [{ type: '西裝外套', count: 1, price: 250, color: '黑色', garmentId: 'C-1001' }, { type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1002' }, { type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1003' }], total: 450, status: '包裝中', bagId: '', date: '2026-06-27', lineSent: false, paymentMethod: '儲值金' },
+  { id: 'ORD-2026-0002', memberId: 'MEM-0003', customerName: '張雅婷', customerPhone: '0935-777-888', items: [{ type: '高級禮服', count: 1, price: 600, color: '紅色', garmentId: 'C-1004' }], total: 600, status: '待取件', bagId: 'BAG-1024', date: '2026-06-27', lineSent: true, paymentMethod: '儲值金' },
+  { id: 'ORD-2026-0003', memberId: 'MEM-0002', customerName: '林志明', customerPhone: '0928-111-222', items: [{ type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1005' }, { type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1006' }], total: 240, status: '清洗中', bagId: '', date: '2026-06-26', lineSent: false, paymentMethod: '現金' },
+  { id: 'ORD-2026-0004', memberId: 'MEM-0004', customerName: '王大同', customerPhone: '0988-555-444', items: [{ type: '羽絨大衣', count: 1, price: 450, color: '灰色', garmentId: 'C-1007' }], total: 450, status: '已取件', bagId: 'BAG-9901', date: '2026-06-25', lineSent: true, paymentMethod: '信用卡' },
 ];
 
 export default function App() {
@@ -77,7 +77,7 @@ export default function App() {
     storeName: '綠潔智慧乾洗 - 台北忠孝旗艦店',
     phone: '02-2771-0000',
     address: '台北市大安區忠孝東路四段 100 號',
-    // 🌟 範本中加入 {衣服編號清單}
+    // 🌟 在這裡加上 {衣服編號清單} 參數
     lineNotificationTemplate: '【綠潔智慧乾洗】親愛的 {會員姓名} 您好，您送洗的衣物已經清洗完成囉！本次我們使用智慧循環衣袋「{衣袋編號}」為您包裝，衣物專屬編號為：{衣服編號清單}。歡迎您隨時前來店內取件並順便歸還空袋。一同守護地球綠色環境！',
     isAutoPrintLabel: true
   });
@@ -202,6 +202,7 @@ export default function App() {
       return;
     }
 
+    const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
     const newCustomItem = {
       id: `custom_${Date.now()}`,
       name: customItemName,
@@ -212,7 +213,7 @@ export default function App() {
       treatment: '標準清洗',
       color: '白色',
       remarks: '',
-      garmentId: ''
+      garmentId: randomId // 🌟 預先產生隨機假編碼
     };
 
     setOrderItems([...orderItems, newCustomItem]);
@@ -245,7 +246,7 @@ export default function App() {
       return;
     }
 
-    // 🌟 檢查是否每件衣服都有綁定編號
+    // 🌟 檢查是否所有編號都有填寫
     const missingGarmentId = orderItems.some(item => !item.garmentId || item.garmentId.trim() === '');
     if (missingGarmentId) {
       showToast('❌ 結帳失敗！請確認「每一件」衣物都已掃描或輸入專屬編號。');
@@ -262,14 +263,8 @@ export default function App() {
       memberId: selectedCustomer ? selectedCustomer.id : 'GUEST',
       customerName: selectedCustomer ? selectedCustomer.name : '散客/非會員',
       customerPhone: selectedCustomer ? selectedCustomer.phone : '-',
-      // 🌟 結帳時一併將 garmentId 存入歷史訂單
-      items: orderItems.map(item => ({ 
-        type: item.name, 
-        count: 1, 
-        price: item.price, 
-        color: item.color,
-        garmentId: item.garmentId 
-      })),
+      // 🌟 儲存進歷史訂單時，把 garmentId 存入
+      items: orderItems.map(item => ({ type: item.name, count: 1, price: item.price, color: item.color, garmentId: item.garmentId })),
       total: subtotal,
       status: '清洗中',
       bagId: '',
@@ -1307,7 +1302,7 @@ export default function App() {
                         key={cat.id}
                         type="button"
                         onClick={() => {
-                          // 🌟 修改：每次點擊都獨立新增一行，數量固定為 1
+                          const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
                           setOrderItems([...orderItems, { 
                             id: `${cat.id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, 
                             name: cat.name, 
@@ -1317,7 +1312,7 @@ export default function App() {
                             treatment: '標準清洗',
                             color: '白色', 
                             remarks: '',
-                            garmentId: '' // 🌟 新增：專屬衣服編號欄位
+                            garmentId: randomId // 🌟 預先產生隨機假編碼
                           }]);
                         }
                       }
@@ -1349,84 +1344,130 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="space-y-3 overflow-y-auto max-h-[350px] pr-2">
-                      {orderItems.map((item, index) => (
-                        <div key={index} className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 space-y-2">
-                          <div className="flex justify-between items-center text-xs">
-                            <span className="font-bold text-slate-800">{item.name}</span>
-                            <div className="flex items-center gap-3">
-                              {/* 🌟 數量固定為1，移除加減按鈕 */}
-                              <span className="font-black font-mono w-12 text-right">${item.price}</span>
-                              <button type="button" onClick={() => removeCartItem(index)} className="text-slate-400 hover:text-red-500 font-bold text-base">✕</button>
-                            </div>
-                          </div>
-
-                          {/* 🌟 改成 5 欄，最前面加上必填的專屬編號 */}
-                          <div className="grid grid-cols-5 gap-2 pt-1.5 border-t border-slate-200/40 text-[11px]">
-                            <div>
-                              <label className="block text-emerald-600 font-bold mb-0.5">專屬編號(可掃描)*</label>
-                              <input 
-                                type="text"
-                                placeholder="請掃描條碼..."
-                                value={item.garmentId || ''}
-                                onChange={(e) => updateCartItem(index, 'garmentId', e.target.value)}
-                                className="w-full bg-emerald-50 border border-emerald-200 rounded p-1 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-emerald-800"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-slate-400 mb-0.5">顏色</label>
-                              <select 
-                                value={item.color} 
-                                onChange={(e) => updateCartItem(index, 'color', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded p-1 focus:outline-none"
-                              >
-                                <option value="白色">白色</option>
-                                <option value="黑色">黑色</option>
-                                <option value="藍色">藍色</option>
-                                <option value="紅色">紅色</option>
-                                <option value="黃色">黃色</option>
-                                <option value="綠色">綠色</option>
-                                <option value="灰色">灰色</option>
-                                <option value="其他">其他</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-slate-400 mb-0.5">材質</label>
-                              <select 
-                                value={item.material} 
-                                onChange={(e) => updateCartItem(index, 'material', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded p-1 focus:outline-none"
-                              >
-                                <option value="純棉">純棉</option>
-                                <option value="羊毛">羊毛</option>
-                                <option value="蠶絲">蠶絲</option>
-                                <option value="羽絨">羽絨</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-slate-400 mb-0.5">洗程</label>
-                              <select 
-                                value={item.treatment} 
-                                onChange={(e) => updateCartItem(index, 'treatment', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded p-1 focus:outline-none"
-                              >
-                                <option value="標準清洗">標準清洗</option>
-                                <option value="精緻水洗">精緻水洗</option>
-                                <option value="低溫乾洗">低溫乾洗</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-slate-400 mb-0.5">個別備註</label>
-                              <input 
-                                type="text"
-                                placeholder="例：有漬"
-                                value={item.remarks}
-                                onChange={(e) => updateCartItem(index, 'remarks', e.target.value)}
-                                className="w-full bg-white border border-slate-200 rounded p-1 focus:outline-none"
-                              />
-                            </div>
-                          </div>
+                      {orderItems.length === 0 ? (
+                        <div className="flex-1 flex flex-col justify-center items-center text-slate-400">
+                          <p className="text-xs">請點選上方的衣服種類登錄</p>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="space-y-3 overflow-y-auto max-h-[350px] pr-2">
+                          {/* 🌟 透過 reduce 在畫面上將同名的 items 包裝進同一個框，但不改變變數結構 */}
+                          {(Object.values(orderItems.reduce((acc: any, curr: any, index: number) => {
+                            if (!acc[curr.name]) acc[curr.name] = { name: curr.name, price: curr.price, items: [] };
+                            acc[curr.name].items.push({ ...curr, originalIndex: index });
+                            return acc;
+                          }, {})) as any[]).map((group: any, groupIndex: number) => (
+                            <div key={groupIndex} className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 space-y-3">
+                              
+                              {/* 群組大標題列 */}
+                              <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-200">
+                                <span className="font-bold text-slate-800 text-sm">{group.name}</span>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-slate-500 font-medium">共 {group.items.length} 件</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+                                      setOrderItems([...orderItems, { 
+                                        id: `item_${Date.now()}_${Math.random().toString(36).substring(2,5)}`, 
+                                        name: group.name, 
+                                        price: group.price, 
+                                        count: 1, 
+                                        material: '純棉',
+                                        treatment: '標準清洗',
+                                        color: '白色', 
+                                        remarks: '',
+                                        garmentId: randomId
+                                      }]);
+                                    }} 
+                                    className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-xs font-bold hover:bg-emerald-100 transition shadow-sm"
+                                  >
+                                    ➕ 新增一件
+                                  </button>
+                                  <span className="font-black font-mono w-16 text-right">${group.price * group.items.length}</span>
+                                </div>
+                              </div>
+
+                              {/* 依序渲染該群組下的所有衣服 (保留原始 Index 操作) */}
+                              <div className="space-y-2">
+                                {group.items.map((item: any) => {
+                                  const idx = item.originalIndex; // 對應回原本的 orderItems
+                                  return (
+                                    <div key={item.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1.5fr_auto] gap-2 items-end text-[11px] bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
+                                      <div>
+                                        <label className="block text-emerald-600 font-bold mb-1">專屬編號(可掃描)*</label>
+                                        <input 
+                                          type="text"
+                                          placeholder="掃描條碼"
+                                          value={item.garmentId || ''}
+                                          onChange={(e) => updateCartItem(idx, 'garmentId', e.target.value)}
+                                          className="w-full bg-emerald-50 border border-emerald-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-emerald-800"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block text-slate-400 mb-1">顏色</label>
+                                        <select 
+                                          value={item.color} 
+                                          onChange={(e) => updateCartItem(idx, 'color', e.target.value)}
+                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
+                                        >
+                                          <option value="白色">白色</option>
+                                          <option value="黑色">黑色</option>
+                                          <option value="藍色">藍色</option>
+                                          <option value="紅色">紅色</option>
+                                          <option value="黃色">黃色</option>
+                                          <option value="綠色">綠色</option>
+                                          <option value="灰色">灰色</option>
+                                          <option value="其他">其他</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-slate-400 mb-1">材質</label>
+                                        <select 
+                                          value={item.material} 
+                                          onChange={(e) => updateCartItem(idx, 'material', e.target.value)}
+                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
+                                        >
+                                          <option value="純棉">純棉</option>
+                                          <option value="羊毛">羊毛</option>
+                                          <option value="蠶絲">蠶絲</option>
+                                          <option value="羽絨">羽絨</option>
+                                          <option value="其他">其他</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-slate-400 mb-1">洗程</label>
+                                        <select 
+                                          value={item.treatment} 
+                                          onChange={(e) => updateCartItem(idx, 'treatment', e.target.value)}
+                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
+                                        >
+                                          <option value="標準清洗">標準清洗</option>
+                                          <option value="精緻水洗">精緻水洗</option>
+                                          <option value="低溫乾洗">低溫乾洗</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block text-slate-400 mb-1">個別備註</label>
+                                        <input 
+                                          type="text"
+                                          placeholder="例：有漬"
+                                          value={item.remarks}
+                                          onChange={(e) => updateCartItem(idx, 'remarks', e.target.value)}
+                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
+                                        />
+                                      </div>
+                                      <div className="pb-1">
+                                        {/* 刪除同樣呼叫原本的 removeCartItem 即可 */}
+                                        <button type="button" onClick={() => removeCartItem(idx)} className="text-slate-300 hover:text-red-500 font-bold p-1 text-sm">✕</button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
