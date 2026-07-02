@@ -202,7 +202,6 @@ export default function App() {
       return;
     }
 
-    const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
     const newCustomItem = {
       id: `custom_${Date.now()}`,
       name: customItemName,
@@ -213,7 +212,7 @@ export default function App() {
       treatment: '標準清洗',
       color: '白色',
       remarks: '',
-      garmentId: randomId // 🌟 預先產生隨機假編碼
+      garmentId: '' // 🌟 預設空白，等待實際掃描
     };
 
     setOrderItems([...orderItems, newCustomItem]);
@@ -1302,7 +1301,7 @@ export default function App() {
                         key={cat.id}
                         type="button"
                         onClick={() => {
-                          const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+                          // 移除了 randomId 的產生
                           setOrderItems([...orderItems, { 
                             id: `${cat.id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, 
                             name: cat.name, 
@@ -1312,10 +1311,10 @@ export default function App() {
                             treatment: '標準清洗',
                             color: '白色', 
                             remarks: '',
-                            garmentId: randomId // 🌟 預先產生隨機假編碼
+                            garmentId: '' // 🌟 預設空白，等待實際掃描
                           }]);
-                        }
-                      }
+                        }}
+                    
                         className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-xl p-3 text-left transition text-xs"
                       >
                         <span className="text-xl block mb-1">{cat.icon}</span>
@@ -1366,7 +1365,7 @@ export default function App() {
                                   <button 
                                     type="button" 
                                     onClick={() => {
-                                      const randomId = `C-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+                                      // 移除了 randomId 的產生
                                       setOrderItems([...orderItems, { 
                                         id: `item_${Date.now()}_${Math.random().toString(36).substring(2,5)}`, 
                                         name: group.name, 
@@ -1376,7 +1375,7 @@ export default function App() {
                                         treatment: '標準清洗',
                                         color: '白色', 
                                         remarks: '',
-                                        garmentId: randomId
+                                        garmentId: '' // 🌟 預設空白，等待實際掃描
                                       }]);
                                     }} 
                                     className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-xs font-bold hover:bg-emerald-100 transition shadow-sm"
