@@ -1,14 +1,172 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-const INITIAL_CUSTOMERS = [
-  { id: 'MEM-0001', name: '陳美玲', phone: '0912-345-678', level: '金卡', esgPoints: 1250, co2Saved: 35.8, borrowedBags: ['BAG-8821'], lastVisit: '2026-06-15', totalOrders: 28, balance: 1500, totalSpent: 12450, habits: '每週二固定來店送洗上班襯衫、西裝' },
-  { id: 'MEM-0002', name: '林志明', phone: '0928-111-222', level: '銀卡', esgPoints: 420, co2Saved: 12.4, borrowedBags: [], lastVisit: '2026-06-20', totalOrders: 12, balance: 350, totalSpent: 6780, habits: '換季時固定會送洗被子、羽絨衣' },
-  { id: 'MEM-0003', name: '張雅婷', phone: '0935-777-888', level: '金卡', esgPoints: 3100, co2Saved: 92.5, borrowedBags: ['BAG-1024', 'BAG-2045'], lastVisit: '2026-05-10', totalOrders: 54, balance: 4200, totalSpent: 18900, habits: '注重高溫除蟎，偏好使用生物溶劑，不加人工香精' },
-  { id: 'MEM-0004', name: '王大同', phone: '0988-555-444', level: '銅卡', esgPoints: 80, co2Saved: 2.1, borrowedBags: [], lastVisit: '2026-06-25', totalOrders: 2, balance: 0, totalSpent: 3250, habits: '通常週六上午送洗，要求西裝領口加壓領線' },
-  { id: 'MEM-0005', name: '李若薇', phone: '0919-666-333', level: '銀卡', esgPoints: 350, co2Saved: 9.8, borrowedBags: [], lastVisit: '2026-04-01', totalOrders: 8, balance: 800, totalSpent: 4500, habits: '高單價洋裝送洗愛好者，每次均自備衣袋' },
+type TabId = 'dashboard' | 'orders' | 'members' | 'checkout' | 'inventory' | 'reports' | 'settings';
+type OrderStatus = '清洗中' | '整燙中' | '包裝中' | '待取件' | '已取件';
+type BagUsageStatus = '待取件' | '借出中' | '已歸還' | '使用中';
+
+type Customer = {
+  id: string;
+  name: string;
+  phone: string;
+  level: string;
+  esgPoints: number;
+  co2Saved: number;
+  borrowedBags: string[];
+  lastVisit: string;
+  totalOrders: number;
+  balance: number;
+  totalSpent: number;
+  habits: string;
+};
+
+type ItemCategory = {
+  id: string;
+  name: string;
+  icon: string;
+  price: number;
+  esgPoints: number;
+};
+
+type OrderItem = {
+  id?: string;
+  type?: string;
+  name: string;
+  count: number;
+  price: number;
+  color: string;
+  garmentId: string;
+  material?: string;
+  treatment?: string;
+  remarks?: string;
+  esgPoints?: number;
+};
+
+type Order = {
+  id: string;
+  memberId: string;
+  customerName: string;
+  customerPhone: string;
+  items: OrderItem[];
+  total: number;
+  status: OrderStatus;
+  bagId: string;
+  date: string;
+  lineSent: boolean;
+  paymentMethod: string;
+  remark?: string;
+};
+
+type InventoryItem = {
+  id: string;
+  name: string;
+  stock: number;
+  minStock: number;
+  unit: string;
+};
+
+type Campaign = {
+  id: string;
+  name: string;
+  segment: string;
+  date: string;
+  count: number;
+  content: string;
+  status: string;
+};
+
+type BagUsageStat = {
+  bagId: string;
+  useCount: number;
+  firstUsedDate: string;
+  lastUsedDate: string;
+  lastReturnedDate?: string;
+  status: BagUsageStatus;
+  currentCustomer: string;
+  relatedOrderId: string;
+};
+
+type Settings = {
+  storeName: string;
+  phone: string;
+  address: string;
+  lineNotificationTemplate: string;
+  isAutoPrintLabel: boolean;
+};
+
+const INITIAL_CUSTOMERS: Customer[] = [
+  {
+    id: 'MEM-0001',
+    name: '陳美玲',
+    phone: '0912-345-678',
+    level: '金卡',
+    esgPoints: 1250,
+    co2Saved: 35.8,
+    borrowedBags: ['BAG-8821'],
+    lastVisit: '2026-06-15',
+    totalOrders: 28,
+    balance: 1500,
+    totalSpent: 12450,
+    habits: '每週二固定來店送洗上班襯衫、西裝',
+  },
+  {
+    id: 'MEM-0002',
+    name: '林志明',
+    phone: '0928-111-222',
+    level: '銀卡',
+    esgPoints: 420,
+    co2Saved: 12.4,
+    borrowedBags: [],
+    lastVisit: '2026-06-20',
+    totalOrders: 12,
+    balance: 350,
+    totalSpent: 6780,
+    habits: '換季時固定會送洗被子、羽絨衣',
+  },
+  {
+    id: 'MEM-0003',
+    name: '張雅婷',
+    phone: '0935-777-888',
+    level: '金卡',
+    esgPoints: 3100,
+    co2Saved: 92.5,
+    borrowedBags: ['BAG-1024', 'BAG-2045'],
+    lastVisit: '2026-05-10',
+    totalOrders: 54,
+    balance: 4200,
+    totalSpent: 18900,
+    habits: '注重高溫除蟎，偏好使用生物溶劑，不加人工香精',
+  },
+  {
+    id: 'MEM-0004',
+    name: '王大同',
+    phone: '0988-555-444',
+    level: '銅卡',
+    esgPoints: 80,
+    co2Saved: 2.1,
+    borrowedBags: [],
+    lastVisit: '2026-06-25',
+    totalOrders: 2,
+    balance: 0,
+    totalSpent: 3250,
+    habits: '通常週六上午送洗，要求西裝領口加壓領線',
+  },
+  {
+    id: 'MEM-0005',
+    name: '李若薇',
+    phone: '0919-666-333',
+    level: '銀卡',
+    esgPoints: 350,
+    co2Saved: 9.8,
+    borrowedBags: [],
+    lastVisit: '2026-04-01',
+    totalOrders: 8,
+    balance: 800,
+    totalSpent: 4500,
+    habits: '高單價洋裝送洗愛好者，每次均自備衣袋',
+  },
 ];
 
-const ITEM_CATEGORIES = [
+const ITEM_CATEGORIES: ItemCategory[] = [
   { id: 'cat1', name: '襯衫/T恤', icon: '👕', price: 100, esgPoints: 10 },
   { id: 'cat2', name: '西裝外套', icon: '🧥', price: 250, esgPoints: 20 },
   { id: 'cat3', name: '羽絨大衣', icon: '❄️', price: 450, esgPoints: 35 },
@@ -17,34 +175,151 @@ const ITEM_CATEGORIES = [
   { id: 'cat6', name: '床被/寢具', icon: '🛏️', price: 500, esgPoints: 40 },
 ];
 
-const INITIAL_ORDERS = [
-  { id: 'ORD-2026-0001', memberId: 'MEM-0001', customerName: '陳美玲', customerPhone: '0912-345-678', items: [{ type: '西裝外套', count: 1, price: 250, color: '黑色', garmentId: 'C-1001' }, { type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1002' }, { type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1003' }], total: 450, status: '包裝中', bagId: '', date: '2026-06-27', lineSent: false, paymentMethod: '儲值金' },
-  { id: 'ORD-2026-0002', memberId: 'MEM-0003', customerName: '張雅婷', customerPhone: '0935-777-888', items: [{ type: '高級禮服', count: 1, price: 600, color: '紅色', garmentId: 'C-1004' }], total: 600, status: '待取件', bagId: 'BAG-1024', date: '2026-06-27', lineSent: true, paymentMethod: '儲值金' },
-  { id: 'ORD-2026-0003', memberId: 'MEM-0002', customerName: '林志明', customerPhone: '0928-111-222', items: [{ type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1005' }, { type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1006' }], total: 240, status: '清洗中', bagId: '', date: '2026-06-26', lineSent: false, paymentMethod: '現金' },
-  { id: 'ORD-2026-0004', memberId: 'MEM-0004', customerName: '王大同', customerPhone: '0988-555-444', items: [{ type: '羽絨大衣', count: 1, price: 450, color: '灰色', garmentId: 'C-1007' }], total: 450, status: '已取件', bagId: 'BAG-9901', date: '2026-06-25', lineSent: true, paymentMethod: '信用卡' },
+const INITIAL_ORDERS: Order[] = [
+  {
+    id: 'ORD-2026-0001',
+    memberId: 'MEM-0001',
+    customerName: '陳美玲',
+    customerPhone: '0912-345-678',
+    items: [
+      { id: 'item-1', name: '西裝外套', type: '西裝外套', count: 1, price: 250, color: '黑色', garmentId: 'C-1001' },
+      { id: 'item-2', name: '襯衫/T恤', type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1002' },
+      { id: 'item-3', name: '襯衫/T恤', type: '襯衫/T恤', count: 1, price: 100, color: '白色', garmentId: 'C-1003' },
+    ],
+    total: 450,
+    status: '包裝中',
+    bagId: '',
+    date: '2026-06-27',
+    lineSent: false,
+    paymentMethod: '儲值金',
+  },
+  {
+    id: 'ORD-2026-0002',
+    memberId: 'MEM-0003',
+    customerName: '張雅婷',
+    customerPhone: '0935-777-888',
+    items: [{ id: 'item-4', name: '高級禮服', type: '高級禮服', count: 1, price: 600, color: '紅色', garmentId: 'C-1004' }],
+    total: 600,
+    status: '待取件',
+    bagId: 'BAG-1024',
+    date: '2026-06-27',
+    lineSent: true,
+    paymentMethod: '儲值金',
+  },
+  {
+    id: 'ORD-2026-0003',
+    memberId: 'MEM-0002',
+    customerName: '林志明',
+    customerPhone: '0928-111-222',
+    items: [
+      { id: 'item-5', name: '長褲/裙子', type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1005' },
+      { id: 'item-6', name: '長褲/裙子', type: '長褲/裙子', count: 1, price: 120, color: '藍色', garmentId: 'C-1006' },
+    ],
+    total: 240,
+    status: '清洗中',
+    bagId: '',
+    date: '2026-06-26',
+    lineSent: false,
+    paymentMethod: '現金',
+  },
+  {
+    id: 'ORD-2026-0004',
+    memberId: 'MEM-0004',
+    customerName: '王大同',
+    customerPhone: '0988-555-444',
+    items: [{ id: 'item-7', name: '羽絨大衣', type: '羽絨大衣', count: 1, price: 450, color: '灰色', garmentId: 'C-1007' }],
+    total: 450,
+    status: '已取件',
+    bagId: 'BAG-9901',
+    date: '2026-06-25',
+    lineSent: true,
+    paymentMethod: '信用卡',
+  },
 ];
 
+const INITIAL_BAG_USAGE_STATS: BagUsageStat[] = [
+  {
+    bagId: 'BAG-1024',
+    useCount: 8,
+    firstUsedDate: '2026-03-03',
+    lastUsedDate: '2026-06-27',
+    status: '待取件',
+    currentCustomer: '張雅婷',
+    relatedOrderId: 'ORD-2026-0002',
+  },
+  {
+    bagId: 'BAG-2045',
+    useCount: 4,
+    firstUsedDate: '2026-04-10',
+    lastUsedDate: '2026-06-18',
+    status: '借出中',
+    currentCustomer: '張雅婷',
+    relatedOrderId: 'ORD-2026-0011',
+  },
+  {
+    bagId: 'BAG-8821',
+    useCount: 5,
+    firstUsedDate: '2026-04-02',
+    lastUsedDate: '2026-06-15',
+    status: '借出中',
+    currentCustomer: '陳美玲',
+    relatedOrderId: 'ORD-2026-0008',
+  },
+  {
+    bagId: 'BAG-9901',
+    useCount: 14,
+    firstUsedDate: '2026-01-08',
+    lastUsedDate: '2026-06-25',
+    lastReturnedDate: '2026-06-25',
+    status: '已歸還',
+    currentCustomer: '-',
+    relatedOrderId: 'ORD-2026-0004',
+  },
+  {
+    bagId: 'BAG-3308',
+    useCount: 11,
+    firstUsedDate: '2026-02-01',
+    lastUsedDate: '2026-06-12',
+    lastReturnedDate: '2026-06-13',
+    status: '已歸還',
+    currentCustomer: '-',
+    relatedOrderId: 'ORD-2026-0020',
+  },
+  {
+    bagId: 'BAG-7712',
+    useCount: 7,
+    firstUsedDate: '2026-03-15',
+    lastUsedDate: '2026-06-08',
+    lastReturnedDate: '2026-06-09',
+    status: '已歸還',
+    currentCustomer: '-',
+    relatedOrderId: 'ORD-2026-0017',
+  },
+];
+
+const ORDER_STATUS_OPTIONS: OrderStatus[] = ['清洗中', '整燙中', '包裝中', '待取件', '已取件'];
+const BAG_ID_PATTERN = /^BAG-\d{4}$/;
+const GARMENT_ID_PATTERN = /^C-\d{4}$/;
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState('checkout');
-  
-  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
-  const [orders, setOrders] = useState(INITIAL_ORDERS);
+  const [activeTab, setActiveTab] = useState<TabId>('checkout');
+  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [bagUsageStats, setBagUsageStats] = useState<BagUsageStat[]>(INITIAL_BAG_USAGE_STATS);
   const [bagCirculationCount, setBagCirculationCount] = useState(584);
-  const [chartView, setChartView] = useState('月'); 
-  const [dashboardChartView, setDashboardChartView] = useState('月'); 
+  const [chartView, setChartView] = useState<'年' | '季' | '月'>('月');
+  const [dashboardChartView, setDashboardChartView] = useState<'年' | '季' | '月'>('月');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 收銀台 (衣物管理分頁) 狀態
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchPhone, setSearchPhone] = useState('');
-  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [useEcoSolvent, setEcoSolvent] = useState(true);
   const [orderRemark, setOrderRemark] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('現金');
   const [checkoutReturnBagId, setCheckoutReturnBagId] = useState('');
   const [checkoutReturnBagCondition, setCheckoutReturnBagCondition] = useState('良好');
 
-  // 各種控制彈窗
   const [isCustomItemOpen, setIsCustomItemOpen] = useState(false);
   const [customItemName, setCustomItemName] = useState('');
   const [customItemPrice, setCustomItemPrice] = useState('');
@@ -58,482 +333,180 @@ export default function App() {
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPhone, setNewMemberPhone] = useState('');
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-  const [topUpCustomer, setTopUpCustomer] = useState<any>(null);
+  const [topUpCustomer, setTopUpCustomer] = useState<Customer | null>(null);
   const [topUpAmount, setTopUpAmount] = useState('');
-
-  // 顧客備註快速修改狀態
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
   const [tempHabitText, setTempHabitText] = useState('');
 
-  const [inventoryList, setInventoryList] = useState([
+  const [inventoryList, setInventoryList] = useState<InventoryItem[]>([
     { id: 'INV-01', name: '智慧循環衣袋', stock: 120, minStock: 20, unit: '個' },
     { id: 'INV-02', name: '環保回收衣架', stock: 350, minStock: 50, unit: '支' },
     { id: 'INV-03', name: '整袋送洗之洗衣籃', stock: 15, minStock: 3, unit: '個' },
-    { id: 'INV-04', name: '環保無毒生物溶劑', stock: 45, minStock: 10, unit: '公升' }
+    { id: 'INV-04', name: '環保無毒生物溶劑', stock: 45, minStock: 10, unit: '公升' },
   ]);
 
-  //營運設定狀態
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<Settings>({
     storeName: '綠潔智慧乾洗 - 台北忠孝旗艦店',
     phone: '02-2771-0000',
     address: '台北市大安區忠孝東路四段 100 號',
-    // 🌟 在這裡加上 {衣服編號清單} 參數
-    lineNotificationTemplate: '【綠潔智慧乾洗】親愛的 {會員姓名} 您好，您送洗的衣物已經清洗完成囉！本次我們使用智慧循環衣袋「{衣袋編號}」為您包裝，衣物專屬編號為：{衣服編號清單}。歡迎您隨時前來店內取件並順便歸還空袋。一同守護地球綠色環境！',
-    isAutoPrintLabel: true
+    lineNotificationTemplate:
+      '〖綠潔智慧乾洗〗親愛的 {會員姓名} 您好，您送洗的衣物已經清洗完成囉！本次我們使用智慧循環衣袋「{衣袋編號}」為您包裝，衣物專屬編號為：{衣服編號清單}。歡迎您隨時前來店內取件並順便歸還空袋。一同守護地球綠色環境！',
+    isAutoPrintLabel: true,
   });
 
-  // 再行銷/客群推播
-  const [marketingSegment, setMarketingSegment] = useState('eco_fans');
+  const [marketingSegment, setMarketingSegment] = useState<'eco_fans' | 'inactive' | 'big_spenders'>('eco_fans');
   const [customSmsContent, setCustomSmsContent] = useState('');
-  const [campaignHistory, setCampaignHistory] = useState([
-    { id: 'CAM-01', name: '環保減碳回饋祭', segment: '環保急先鋒', date: '2026-06-10', count: 3, content: '親愛的綠色會員您好！帶回您手上的「智慧循環衣袋」至店內回收或取件歸還，可直接獲得 50 點  配客點，共同守護地球。', status: '已發送' },
-    { id: 'CAM-02', name: '梅雨季烘乾貼心提醒', segment: '全體會員', date: '2026-06-18', count: 5, content: '最近連日大雨，家裡衣服曬不乾嗎？綠潔為您提供100%環保烘乾與抗過敏除蟎清洗服務！', status: '已發送' }
+  const [campaignHistory, setCampaignHistory] = useState<Campaign[]>([
+    {
+      id: 'CAM-01',
+      name: '環保減碳回饋祭',
+      segment: '環保急先鋒',
+      date: '2026-06-10',
+      count: 3,
+      content: '親愛的綠色會員您好！帶回您手上的「智慧循環衣袋」至店內回收或取件歸還，可直接獲得 50 點配客點，共同守護地球。',
+      status: '已發送',
+    },
+    {
+      id: 'CAM-02',
+      name: '梅雨季烘乾貼心提醒',
+      segment: '全體會員',
+      date: '2026-06-18',
+      count: 5,
+      content: '最近連日大雨，家裡衣服曬不乾嗎？綠潔為您提供 100% 環保烘乾與抗過敏除蟎清洗服務！',
+      status: '已發送',
+    },
   ]);
 
-  // 洗衣狀態篩選與多選
-  const [orderStatusFilter, setOrderStatusFilter] = useState('全部');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'全部' | OrderStatus>('全部');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-
-  // 會員篩選
   const [memberSearch, setMemberSearch] = useState('');
-
-  // 定義被篩選後的訂單資料
-  const filteredOrders = orderStatusFilter === '全部'
-    ? orders
-    : orders.filter(o => o.status === orderStatusFilter);
-
-  const handleSendCampaign = () => {
-    if (!customSmsContent.trim()) {
-      showToast('⚠️ 推播內容不可為空！');
-      return;
-    }
-    const newCampaign = {
-      id: `CAM-${String(campaignHistory.length + 1).padStart(2, '0')}`,
-      name: marketingSegment === 'eco_fans' ? '精準推播 - 環保先鋒' : marketingSegment === 'inactive' ? '精準推播 - 久未到店' : '精準推播 - 尊榮會員',
-      segment: marketingSegment === 'eco_fans' ? '環保急先鋒' : marketingSegment === 'inactive' ? '久未到店客' : '高價值會員',
-      date: '今日',
-      count: 3,
-      content: customSmsContent,
-      status: '已發送'
-    };
-    setCampaignHistory([newCampaign, ...campaignHistory]);
-    showToast('✉️ 智慧再行銷推播訊息已通過 Line / SMS 發送完畢！');
-  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4000);
+    window.setTimeout(() => setToastMessage(null), 3500);
   };
 
-  useEffect(() => {
-    if (marketingSegment === 'eco_fans') {
-      setCustomSmsContent('【綠潔乾洗】親愛的綠色環保先鋒 {會員姓名} 您好！您目前已為地球減少了 {減碳量}kg 碳排放。本週末來店洗衣服並歸還您手邊借用之綠色衣袋，即享綠色極致清洗 85 折與點數回饋！');
-    } else if (marketingSegment === 'inactive') {
-      setCustomSmsContent('【綠潔乾洗】您好，我們好久沒見面了！為了感謝您的支持，我們為您準備了專屬回娘家優惠券：輸入/出示代碼【MISSYOU】即可折抵乾洗費 100 元，期待為您服務！');
-    } else if (marketingSegment === 'big_spenders') {
-      setCustomSmsContent('【綠潔乾洗】尊榮會員 {會員姓名} 您好！感謝您對高品質衣物護理的信任。本月我們推出「儲值金限時加碼回饋」，儲值滿3000送500！詳情請洽門市。');
-    }
-  }, [marketingSegment]);
+  const getTodayDateText = () => new Date().toISOString().slice(0, 10);
+  const normalizeBagId = (bagId: string) => bagId.trim().toUpperCase();
 
-  const handleCustomerSearch = () => {
-    const found = customers.find(c => c.phone.includes(searchPhone) || c.name.includes(searchPhone) || c.id.includes(searchPhone));
-    if (found) {
-      setSelectedCustomer(found);
-      showToast(`已連結會員：${found.name} (${found.id})`);
-    } else {
-      showToast('找不到該會員，請確認電話或新增會員');
-    }
+  const getDaysBetween = (startDate: string, endDate: string) => {
+    const start = new Date(startDate).getTime();
+    const end = new Date(endDate).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end)) return 0;
+    return Math.max(0, Math.round((end - start) / (1000 * 60 * 60 * 24)));
   };
 
-  const handleCheckoutReturnBag = () => {
-    if (!checkoutReturnBagId.trim()) return;
-    const targetBag = checkoutReturnBagId.trim().toUpperCase();
-
-    if (!selectedCustomer.borrowedBags.includes(targetBag)) {
-      showToast(`⚠️ 該會員未借用此衣袋 ${targetBag}。`);
-      return;
-    }
-
-    const updatedCustomers = customers.map(c => {
-      if (c.id === selectedCustomer.id) {
-        return {
-          ...c,
-          borrowedBags: c.borrowedBags.filter(b => b !== targetBag),
-          esgPoints: c.esgPoints + 50,
-          co2Saved: Number((c.co2Saved + 0.15).toFixed(2))
-        };
-      }
-      return c;
-    });
-    setCustomers(updatedCustomers);
-
-    const updatedOrders = orders.map(o => {
-      if (o.bagId === targetBag && o.status === '待取件') {
-        return { ...o, status: '已取件' };
-      }
-      return o;
-    });
-    setOrders(updatedOrders);
-    setBagCirculationCount(prev => prev + 1);
-
-    setSelectedCustomer((prev: any) => ({
-      ...prev,
-      borrowedBags: prev.borrowedBags.filter((b: string) => b !== targetBag),
-      esgPoints: prev.esgPoints + 50
-    }));
-
-    showToast(`♻️ 衣袋 ${targetBag} 歸還成功！(情況：${checkoutReturnBagCondition})`);
-    setCheckoutReturnBagId('');
-    setCheckoutReturnBagCondition('良好');
+  const getBagStatusStyle = (status: BagUsageStatus) => {
+    if (status === '已歸還') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (status === '待取件') return 'bg-amber-50 text-amber-700 border-amber-200';
+    if (status === '借出中') return 'bg-red-50 text-red-700 border-red-200';
+    return 'bg-blue-50 text-blue-700 border-blue-200';
   };
 
-  // 快速新增自訂衣物
-  const handleAddCustomItem = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customItemName || !customItemPrice) {
-      showToast('請填寫完整衣服項目與價格！');
-      return;
-    }
-    const priceNum = parseFloat(customItemPrice);
-    if (isNaN(priceNum)) {
-      showToast('價格必須為數字');
-      return;
-    }
+  const registerBagUse = (bagId: string, order: Order) => {
+    const targetBag = normalizeBagId(bagId);
+    const today = getTodayDateText();
 
-    const newCustomItem = {
-      id: `custom_${Date.now()}`,
-      name: customItemName,
-      price: priceNum,
-      count: 1,
-      esgPoints: 15,
-      material: '其他',
-      treatment: '標準清洗',
-      color: '白色',
-      remarks: '',
-      garmentId: '' // 🌟 預設空白，等待實際掃描
-    };
+    setBagUsageStats(prev => {
+      const exists = prev.some(bag => bag.bagId === targetBag);
 
-    setOrderItems([...orderItems, newCustomItem]);
-    setCustomItemName('');
-    setCustomItemPrice('');
-    setIsCustomItemOpen(false);
-    showToast(`已成功新增自訂衣服項目「${customItemName}」`);
-  };
-
-  // 購物車變更與收銀
-  const updateCartItem = (index: number, field: string, value: any) => {
-    const updated = [...orderItems];
-    updated[index][field] = value;
-    setOrderItems(updated);
-  };
-
-  const removeCartItem = (index: number) => {
-    const updated = [...orderItems];
-    updated.splice(index, 1);
-    setOrderItems(updated);
-  };
-
-  const calculateSubtotal = () => {
-    return orderItems.reduce((acc, curr) => acc + (curr.price * curr.count), 0);
-  };
-
-  const handleCheckout = () => {
-    if (orderItems.length === 0) {
-      showToast('❌ 請先加入衣物至購物車！');
-      return;
-    }
-
-    // 🌟 檢查是否所有編號都有填寫
-    const missingGarmentId = orderItems.some(item => !item.garmentId || item.garmentId.trim() === '');
-    if (missingGarmentId) {
-      showToast('❌ 結帳失敗！請確認「每一件」衣物都已掃描或輸入專屬編號。');
-      return;
-    }
-
-    const subtotal = calculateSubtotal();
-
-    // ... (中間餘額判斷保留) ...
-
-    const orderId = `ORD-2026-${String(orders.length + 1).padStart(4, '0')}`;
-    const newOrder = {
-      id: orderId,
-      memberId: selectedCustomer ? selectedCustomer.id : 'GUEST',
-      customerName: selectedCustomer ? selectedCustomer.name : '散客/非會員',
-      customerPhone: selectedCustomer ? selectedCustomer.phone : '-',
-      // 🌟 儲存進歷史訂單時，把 garmentId 存入
-      items: orderItems.map(item => ({ type: item.name, count: 1, price: item.price, color: item.color, garmentId: item.garmentId })),
-      total: subtotal,
-      status: '清洗中',
-      bagId: '',
-      date: '2026-06-28',
-      lineSent: false,
-      paymentMethod: paymentMethod
-    };
-
-    if (selectedCustomer) {
-      const updatedCust = customers.map(c => {
-        if (c.id === selectedCustomer.id) {
-          const deductAmount = paymentMethod === '儲值金' ? subtotal : 0;
-          return {
-            ...c,
-            balance: c.balance - deductAmount,
-            esgPoints: c.esgPoints + orderItems.length * 10,
-            lastVisit: '今日',
-            totalOrders: c.totalOrders + 1,
-            totalSpent: c.totalSpent + subtotal
-          };
-        }
-        return c;
-      });
-      setCustomers(updatedCust);
-      
-      if (paymentMethod === '儲值金') {
-        setSelectedCustomer((prev: any) => ({ ...prev, balance: prev.balance - subtotal }));
-      }
-    }
-
-    setOrders([newOrder, ...orders]);
-    setOrderItems([]);
-    setOrderRemark('');
-    setSelectedCustomer(null);
-    setSearchPhone('');
-    setCheckoutReturnBagId('');
-    showToast(`🎉 訂單 ${orderId} 建立完成！`);
-  };
-
-  const handleSingleStatusChange = (orderId: string, targetStatus: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-
-    if (targetStatus === '待取件' && !order.bagId && order.memberId !== 'GUEST') {
-      openBagBindingModal(orderId);
-      return;
-    }
-
-    const updated = orders.map(o => {
-      if (o.id === orderId) {
-        return { ...o, status: targetStatus };
-      }
-      return o;
-    });
-    setOrders(updated);
-    showToast(`訂單 ${orderId} 已變更為「${targetStatus}」`);
-  };
-
-  const handleBatchStatusChange = (targetStatus: string) => {
-    if (selectedOrderIds.length === 0) return;
-
-    const unbondedMemberOrders = orders.filter(o => selectedOrderIds.includes(o.id) && o.memberId !== 'GUEST' && !o.bagId);
-    if (targetStatus === '待取件' && unbondedMemberOrders.length > 0) {
-      showToast(`⚠️ 批次失敗！部分勾選訂單尚未掃描包裝綁定衣袋。`);
-      return;
-    }
-
-    const updated = orders.map(o => {
-      if (selectedOrderIds.includes(o.id)) {
-        return { ...o, status: targetStatus };
-      }
-      return o;
-    });
-    setOrders(updated);
-    setSelectedOrderIds([]);
-    showToast(`成功批次變更狀態為「${targetStatus}」`);
-  };
-
-  const openBagBindingModal = (orderId: string) => {
-    setBindingOrderId(orderId);
-    setTempBagId('');
-    setIsBagBindingModalOpen(true);
-  };
-
-  const handleBindBagSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tempBagId.trim()) return;
-
-    const bagIdUpper = tempBagId.trim().toUpperCase();
-    const order = orders.find(o => o.id === bindingOrderId);
-    if (!order) return;
-
-    const updatedOrders = orders.map(o => {
-      if (o.id === bindingOrderId) {
-        return { ...o, bagId: bagIdUpper, status: '待取件' };
-      }
-      return o;
-    });
-    setOrders(updatedOrders);
-
-    if (order.memberId && order.memberId !== 'GUEST') {
-      const updatedCustomers = customers.map(c => {
-        if (c.id === order.memberId) {
-          const updatedBags = c.borrowedBags.includes(bagIdUpper) ? c.borrowedBags : [...c.borrowedBags, bagIdUpper];
-          return { ...c, borrowedBags: updatedBags };
-        }
-        return c;
-      });
-      setCustomers(updatedCustomers);
-    }
-
-    setBagCirculationCount(prev => prev + 1);
-    setIsBagBindingModalOpen(false);
-    setTempBagId('');
-    showToast(`📦 訂單 ${order.id} 已完成包裝並綁定衣袋 ${bagIdUpper}！`);
-  };
-
-  const handleCustomerPickup = (orderId: string) => {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
-
-    const updatedOrders = orders.map(o => {
-      if (o.id === orderId) {
-        return { ...o, status: '已取件' };
-      }
-      return o;
-    });
-    setOrders(updatedOrders);
-
-    if (order.memberId && order.memberId !== 'GUEST' && order.bagId) {
-      const updatedCustomers = customers.map(c => {
-        if (c.id === order.memberId) {
-          const updatedBags = c.borrowedBags.filter(b => b !== order.bagId);
-          return { 
-            ...c, 
-            borrowedBags: updatedBags,
-            esgPoints: c.esgPoints + 50,
-            co2Saved: Number((c.co2Saved + 0.15).toFixed(2))
-          };
-        }
-        return c;
-      });
-      setCustomers(updatedCustomers);
-      showToast(`✅ 歸還衣袋 ${order.bagId} 成功！${order.customerName} 取件完成！`);
-    } else {
-      showToast(`✅ 散客訂單 ${orderId} 取件成功！`);
-    }
-  };
-
-  const handleQuickReturnSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickReturnBagId.trim()) return;
-
-    const targetBag = quickReturnBagId.trim().toUpperCase();
-    let foundMember: any = null;
-
-    const updatedCustomers = customers.map(c => {
-      if (c.borrowedBags.includes(targetBag)) {
-        foundMember = c;
-        const updatedBags = c.borrowedBags.filter(b => b !== targetBag);
-        return {
-          ...c,
-          borrowedBags: updatedBags,
-          esgPoints: c.esgPoints + 50,
-          co2Saved: Number((c.co2Saved + 0.15).toFixed(2))
-        };
-      }
-      return c;
-    });
-
-    if (foundMember) {
-      setCustomers(updatedCustomers);
-      const updatedOrders = orders.map(o => {
-        if (o.bagId === targetBag && o.status === '待取件') {
-          return { ...o, status: '已取件' };
-        }
-        return o;
-      });
-      setOrders(updatedOrders);
-      setBagCirculationCount(prev => prev + 1);
-      
-      if (selectedCustomer && selectedCustomer.id === foundMember.id) {
-        setSelectedCustomer((prev: any) => ({
+      if (!exists) {
+        return [
+          {
+            bagId: targetBag,
+            useCount: 1,
+            firstUsedDate: today,
+            lastUsedDate: today,
+            status: '待取件',
+            currentCustomer: order.customerName,
+            relatedOrderId: order.id,
+          },
           ...prev,
-          borrowedBags: prev.borrowedBags.filter((b: string) => b !== targetBag),
-          esgPoints: prev.esgPoints + 50
-        }));
+        ];
       }
 
-      showToast(`♻️ 衣袋 ${targetBag} 快速歸還成功！(情況：${quickReturnBagCondition}) 歸還會員：${foundMember.name} (+50 配客點)`);
-    } else {
-      showToast(`⚠️ 找不到此衣袋借用記錄，或此衣袋已被歸還。`);
-    }
-
-    setQuickReturnBagId('');
-    setQuickReturnBagCondition('良好');
-    setIsQuickReturnOpen(false);
-  };
-
-  // 會員加值
-  const handleTopUpSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(topUpAmount);
-    if (isNaN(amt) || amt <= 0) {
-      showToast('請輸入正確的儲值金額');
-      return;
-    }
-
-    const updatedCust = customers.map(c => {
-      if (c.id === topUpCustomer.id) {
-        return { ...c, balance: c.balance + amt };
-      }
-      return c;
+      return prev.map(bag => {
+        if (bag.bagId !== targetBag) return bag;
+        return {
+          ...bag,
+          useCount: bag.useCount + 1,
+          lastUsedDate: today,
+          status: '待取件',
+          currentCustomer: order.customerName,
+          relatedOrderId: order.id,
+          lastReturnedDate: undefined,
+        };
+      });
     });
-    setCustomers(updatedCust);
-
-    if (selectedCustomer && selectedCustomer.id === topUpCustomer.id) {
-      setSelectedCustomer((prev: any) => ({
-        ...prev,
-        balance: prev.balance + amt
-      }));
-    }
-
-    setIsTopUpOpen(false);
-    setTopUpAmount('');
-    showToast(`儲值成功！${topUpCustomer.name} 已成功儲值 $${amt} 元。`);
   };
 
-  // 新增會員
-  const handleCreateMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMemberName || !newMemberPhone) return;
+  const markBagReturned = (bagId: string) => {
+    const targetBag = normalizeBagId(bagId);
+    const today = getTodayDateText();
 
-    const newId = `MEM-${String(customers.length + 1).padStart(4, '0')}`;
-    const newCust = {
-      id: newId,
-      name: newMemberName,
-      phone: newMemberPhone,
-      level: '新芽會員',
-      esgPoints: 100,
-      co2Saved: 0.0,
-      borrowedBags: [],
-      lastVisit: '今日',
-      totalOrders: 0,
-      balance: 0,
-      totalSpent: 0,
-      habits: '新註冊會員，無備註'
-    };
-    setCustomers([newCust, ...customers]);
-    setSelectedCustomer(newCust);
-    setNewMemberName('');
-    setNewMemberPhone('');
-    setIsAddMemberOpen(false);
-    showToast(`新會員 ${newCust.name} 創建成功！`);
+    setBagUsageStats(prev =>
+      prev.map(bag => {
+        if (bag.bagId !== targetBag) return bag;
+        return {
+          ...bag,
+          status: '已歸還',
+          lastReturnedDate: today,
+          currentCustomer: '-',
+        };
+      }),
+    );
   };
 
-  // 保存客戶專屬備註 / 習性
-  const handleSaveHabit = (id: string) => {
-    const updated = customers.map(c => {
-      if (c.id === id) {
-        return { ...c, habits: tempHabitText };
-      }
-      return c;
-    });
-    setCustomers(updated);
-    setEditingHabitId(null);
-    showToast('📝 顧客習性備註已成功儲存！');
-  };
+  const filteredOrders = useMemo(() => {
+    if (orderStatusFilter === '全部') return orders;
+    return orders.filter(order => order.status === orderStatusFilter);
+  }, [orderStatusFilter, orders]);
 
-  // 衣袋循環折線圖數據 (報表分析頁面)
+  const filteredCustomers = useMemo(() => {
+    const keyword = memberSearch.trim();
+    if (!keyword) return customers;
+    return customers.filter(customer =>
+      [customer.id, customer.name, customer.phone, customer.level].some(value => value.includes(keyword)),
+    );
+  }, [customers, memberSearch]);
+
+  const calculateSubtotal = () => orderItems.reduce((acc, curr) => acc + curr.price * curr.count, 0);
+
+  const groupedOrderItems = useMemo(() => {
+    return Object.values(
+      orderItems.reduce<Record<string, { name: string; price: number; items: Array<OrderItem & { originalIndex: number }> }>>((acc, curr, index) => {
+        if (!acc[curr.name]) acc[curr.name] = { name: curr.name, price: curr.price, items: [] };
+        acc[curr.name].items.push({ ...curr, originalIndex: index });
+        return acc;
+      }, {}),
+    );
+  }, [orderItems]);
+
+  const borrowedBagTotal = customers.reduce((sum, customer) => sum + customer.borrowedBags.length, 0);
+  const availableBagStock = inventoryList.find(item => item.name === '智慧循環衣袋')?.stock ?? 0;
+  const totalBagUseCount = bagUsageStats.reduce((sum, bag) => sum + bag.useCount, 0);
+  const averageUsePerBag = bagUsageStats.length > 0 ? (totalBagUseCount / bagUsageStats.length).toFixed(1) : '0';
+
+  const averageDaysPerUse = useMemo(() => {
+    const validIntervals = bagUsageStats
+      .filter(bag => bag.useCount > 1)
+      .map(bag => getDaysBetween(bag.firstUsedDate, bag.lastUsedDate) / (bag.useCount - 1))
+      .filter(day => Number.isFinite(day) && day > 0);
+
+    if (validIntervals.length === 0) return '0';
+    const totalDays = validIntervals.reduce((sum, day) => sum + day, 0);
+    return (totalDays / validIntervals.length).toFixed(1);
+  }, [bagUsageStats]);
+
+  const sortedBagUsageStats = useMemo(() => {
+    return [...bagUsageStats].sort((a, b) => b.useCount - a.useCount);
+  }, [bagUsageStats]);
+
+  const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+  const pendingOrders = orders.filter(order => order.status !== '已取件').length;
+  const totalMembers = customers.length;
+  const todayOrders = orders.filter(order => order.date === getTodayDateText()).length;
+
   const getChartData = () => {
     if (chartView === '月') {
       return [
@@ -544,26 +517,24 @@ export default function App() {
         { label: '5月', val: 490, x: 370, y: 60 },
         { label: '6月', val: bagCirculationCount, x: 450, y: 30 },
       ];
-    } else if (chartView === '季') {
+    }
+
+    if (chartView === '季') {
       return [
         { label: '第一季', val: 300, x: 80, y: 140 },
-        { label: '第二季', val: 640, x: 200, y: 100 },
+        { label: '第二季', val: bagCirculationCount, x: 200, y: 95 },
         { label: '第三季', val: 1074, x: 320, y: 50 },
         { label: '第四季', val: 1250, x: 440, y: 25 },
       ];
-    } else {
-      return [
-        { label: '2024年', val: 1850, x: 100, y: 150 },
-        { label: '2025年', val: 3200, x: 250, y: 90 },
-        { label: '2026年', val: 5800, x: 400, y: 30 },
-      ];
     }
+
+    return [
+      { label: '2024年', val: 1850, x: 100, y: 150 },
+      { label: '2025年', val: 3200, x: 250, y: 90 },
+      { label: '2026年', val: 5800, x: 400, y: 30 },
+    ];
   };
 
-  const chartPoints = getChartData();
-  const polylinePointsString = chartPoints.map(p => `${p.x},${p.y}`).join(' ');
-
-  // 實時動態計算：首頁「營收趨勢」圖表數據點
   const getDashboardChartData = () => {
     if (dashboardChartView === '月') {
       return [
@@ -574,100 +545,520 @@ export default function App() {
         { label: '05/29', val: '$68K', x: 370, y: 40 },
         { label: '06/05', val: '$58K', x: 450, y: 60 },
       ];
-    } else if (dashboardChartView === '季') {
+    }
+
+    if (dashboardChartView === '季') {
       return [
         { label: '第一季', val: '$112K', x: 80, y: 120 },
         { label: '第二季', val: '$165K', x: 200, y: 85 },
         { label: '第三季', val: '$208K', x: 320, y: 55 },
         { label: '第四季', val: '$254K', x: 440, y: 35 },
       ];
+    }
+
+    return [
+      { label: '2024年', val: '$380K', x: 100, y: 120 },
+      { label: '2025年', val: '$490K', x: 250, y: 75 },
+      { label: '2026年', val: '$620K', x: 400, y: 35 },
+    ];
+  };
+
+  const chartPoints = getChartData();
+  const polylinePointsString = chartPoints.map(point => `${point.x},${point.y}`).join(' ');
+  const dbPoints = getDashboardChartData();
+  const dbPolylinePoints = dbPoints.map(point => `${point.x},${point.y}`).join(' ');
+
+  useEffect(() => {
+    if (marketingSegment === 'eco_fans') {
+      setCustomSmsContent(
+        '〖綠潔乾洗〗親愛的綠色環保先鋒 {會員姓名} 您好！您目前已為地球減少了 {減碳量}kg 碳排放。本週末來店洗衣服並歸還您手邊借用之綠色衣袋，即享綠色極致清洗 85 折與點數回饋！',
+      );
+    } else if (marketingSegment === 'inactive') {
+      setCustomSmsContent(
+        '〖綠潔乾洗〗您好，我們好久沒見面了！為了感謝您的支持，我們為您準備了專屬回娘家優惠券：輸入/出示代碼〖MISSYOU〗即可折抵乾洗費 100 元，期待為您服務！',
+      );
     } else {
-      return [
-        { label: '2024年', val: '$380K', x: 100, y: 120 },
-        { label: '2025年', val: '$490K', x: 250, y: 75 },
-        { label: '2026年', val: '$620K', x: 400, y: 35 },
-      ];
+      setCustomSmsContent(
+        '〖綠潔乾洗〗尊榮會員 {會員姓名} 您好！感謝您對高品質衣物護理的信任。本月我們推出「儲值金限時加碼回饋」，儲值滿 3000 送 500！詳情請洽門市。',
+      );
+    }
+  }, [marketingSegment]);
+
+  const handleCustomerSearch = () => {
+    const keyword = searchPhone.trim();
+    if (!keyword) {
+      showToast('請輸入會員電話、姓名或會員編號');
+      return;
+    }
+
+    const found = customers.find(customer => customer.phone.includes(keyword) || customer.name.includes(keyword) || customer.id.includes(keyword));
+    if (found) {
+      setSelectedCustomer(found);
+      showToast(`已連結會員：${found.name} (${found.id})`);
+    } else {
+      showToast('找不到該會員，請確認電話或新增會員');
     }
   };
 
-  const dbPoints = getDashboardChartData();
-  const dbPolylinePoints = dbPoints.map(p => `${p.x},${p.y}`).join(' ');
+  const handleAddCategoryItem = (category: ItemCategory) => {
+    setOrderItems(prev => [
+      ...prev,
+      {
+        id: `${category.id}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        name: category.name,
+        type: category.name,
+        price: category.price,
+        count: 1,
+        material: '純棉',
+        treatment: '標準清洗',
+        color: '白色',
+        remarks: '',
+        garmentId: '',
+        esgPoints: category.esgPoints,
+      },
+    ]);
+  };
+
+  const handleAddCustomItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customItemName.trim() || !customItemPrice.trim()) {
+      showToast('請填寫完整衣服項目與價格！');
+      return;
+    }
+
+    const priceNum = Number(customItemPrice);
+    if (Number.isNaN(priceNum) || priceNum <= 0) {
+      showToast('價格必須為正確數字');
+      return;
+    }
+
+    setOrderItems(prev => [
+      ...prev,
+      {
+        id: `custom_${Date.now()}`,
+        name: customItemName.trim(),
+        type: customItemName.trim(),
+        price: priceNum,
+        count: 1,
+        material: '其他',
+        treatment: '標準清洗',
+        color: '白色',
+        remarks: '',
+        garmentId: '',
+        esgPoints: 15,
+      },
+    ]);
+
+    showToast(`已新增自訂衣服項目「${customItemName.trim()}」`);
+    setCustomItemName('');
+    setCustomItemPrice('');
+    setIsCustomItemOpen(false);
+  };
+
+  const updateCartItem = (index: number, field: keyof OrderItem, value: string | number) => {
+    setOrderItems(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeCartItem = (index: number) => {
+    setOrderItems(prev => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const handleCheckout = () => {
+    if (orderItems.length === 0) {
+      showToast('❌ 請先加入衣物至購物車！');
+      return;
+    }
+
+    const missingGarmentId = orderItems.some(item => !item.garmentId.trim());
+    if (missingGarmentId) {
+      showToast('❌ 結帳失敗！請確認每一件衣物都已輸入 C-xxxx 專屬編號。');
+      return;
+    }
+
+    const invalidGarmentId = orderItems.some(item => !GARMENT_ID_PATTERN.test(item.garmentId.trim().toUpperCase()));
+    if (invalidGarmentId) {
+      showToast('❌ 衣物編號格式錯誤，請使用 C-0001 這種四位數格式。');
+      return;
+    }
+
+    const subtotal = calculateSubtotal();
+    if (selectedCustomer && paymentMethod === '儲值金' && selectedCustomer.balance < subtotal) {
+      showToast(`❌ 儲值金餘額不足，目前餘額 $${selectedCustomer.balance}，本次需收 $${subtotal}`);
+      return;
+    }
+
+    const orderId = `ORD-2026-${String(orders.length + 1).padStart(4, '0')}`;
+    const newOrder: Order = {
+      id: orderId,
+      memberId: selectedCustomer ? selectedCustomer.id : 'GUEST',
+      customerName: selectedCustomer ? selectedCustomer.name : '散客/非會員',
+      customerPhone: selectedCustomer ? selectedCustomer.phone : '-',
+      items: orderItems.map(item => ({
+        ...item,
+        type: item.name,
+        garmentId: item.garmentId.trim().toUpperCase(),
+      })),
+      total: subtotal,
+      status: '清洗中',
+      bagId: '',
+      date: getTodayDateText(),
+      lineSent: false,
+      paymentMethod,
+      remark: orderRemark,
+    };
+
+    if (selectedCustomer) {
+      const updatedCustomers = customers.map(customer => {
+        if (customer.id !== selectedCustomer.id) return customer;
+        const deductAmount = paymentMethod === '儲值金' ? subtotal : 0;
+        return {
+          ...customer,
+          balance: customer.balance - deductAmount,
+          esgPoints: customer.esgPoints + orderItems.length * 10,
+          lastVisit: '今日',
+          totalOrders: customer.totalOrders + 1,
+          totalSpent: customer.totalSpent + subtotal,
+        };
+      });
+      setCustomers(updatedCustomers);
+    }
+
+    setOrders(prev => [newOrder, ...prev]);
+    setOrderItems([]);
+    setOrderRemark('');
+    setSelectedCustomer(null);
+    setSearchPhone('');
+    setCheckoutReturnBagId('');
+    showToast(`✅ 訂單 ${orderId} 建立完成！`);
+  };
+
+  const openBagBindingModal = (orderId: string) => {
+    setBindingOrderId(orderId);
+    setTempBagId('');
+    setIsBagBindingModalOpen(true);
+  };
+
+  const handleBindBagSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const bagIdUpper = normalizeBagId(tempBagId);
+    if (!bagIdUpper) return;
+
+    if (!BAG_ID_PATTERN.test(bagIdUpper)) {
+      showToast('⚠️ 衣袋編號格式請使用 BAG-0001 這種四位數格式。');
+      return;
+    }
+
+    const order = orders.find(item => item.id === bindingOrderId);
+    if (!order) return;
+
+    setOrders(prev => prev.map(item => (item.id === bindingOrderId ? { ...item, bagId: bagIdUpper, status: '待取件' } : item)));
+
+    if (order.memberId && order.memberId !== 'GUEST') {
+      setCustomers(prev =>
+        prev.map(customer => {
+          if (customer.id !== order.memberId) return customer;
+          const updatedBags = customer.borrowedBags.includes(bagIdUpper) ? customer.borrowedBags : [...customer.borrowedBags, bagIdUpper];
+          return { ...customer, borrowedBags: updatedBags };
+        }),
+      );
+    }
+
+    registerBagUse(bagIdUpper, order);
+    setBagCirculationCount(prev => prev + 1);
+    setIsBagBindingModalOpen(false);
+    setTempBagId('');
+    showToast(`✅ 訂單 ${order.id} 已完成包裝並綁定衣袋 ${bagIdUpper}！`);
+  };
+
+  const handleSingleStatusChange = (orderId: string, targetStatus: OrderStatus) => {
+    const order = orders.find(item => item.id === orderId);
+    if (!order) return;
+
+    if (targetStatus === '待取件' && !order.bagId && order.memberId !== 'GUEST') {
+      openBagBindingModal(orderId);
+      return;
+    }
+
+    setOrders(prev => prev.map(item => (item.id === orderId ? { ...item, status: targetStatus } : item)));
+    showToast(`訂單 ${orderId} 已變更為「${targetStatus}」`);
+  };
+
+  const handleBatchStatusChange = (targetStatus: OrderStatus) => {
+    if (selectedOrderIds.length === 0) return;
+
+    const unbondedMemberOrders = orders.filter(order => selectedOrderIds.includes(order.id) && order.memberId !== 'GUEST' && !order.bagId);
+    if (targetStatus === '待取件' && unbondedMemberOrders.length > 0) {
+      showToast('⚠️ 批次失敗！部分會員訂單尚未掃描包裝綁定衣袋。');
+      return;
+    }
+
+    setOrders(prev => prev.map(order => (selectedOrderIds.includes(order.id) ? { ...order, status: targetStatus } : order)));
+    setSelectedOrderIds([]);
+    showToast(`成功批次變更狀態為「${targetStatus}」`);
+  };
+
+  const returnBagById = (bagId: string, condition: string) => {
+    const targetBag = normalizeBagId(bagId);
+    if (!targetBag) return false;
+
+    const foundMember: Customer | undefined = customers.find(customer =>
+      customer.borrowedBags.includes(targetBag),
+    );
+
+    if (!foundMember) {
+      showToast(`⚠️ 找不到此衣袋借用記錄，或衣袋 ${targetBag} 已被歸還。`);
+      return false;
+    }
+
+    const { id: foundMemberId, name: foundMemberName } = foundMember;
+
+    setCustomers(prevCustomers =>
+      prevCustomers.map(customer => {
+        if (customer.id !== foundMemberId) return customer;
+
+        return {
+          ...customer,
+          borrowedBags: customer.borrowedBags.filter(item => item !== targetBag),
+          esgPoints: customer.esgPoints + 50,
+          co2Saved: Number((customer.co2Saved + 0.15).toFixed(2)),
+        };
+      }),
+    );
+
+    setOrders(prevOrders =>
+      prevOrders.map(order =>
+        order.bagId === targetBag && order.status === '待取件'
+          ? { ...order, status: '已取件' }
+          : order,
+      ),
+    );
+
+    markBagReturned(targetBag);
+    setBagCirculationCount(prev => prev + 1);
+
+    setSelectedCustomer(prevCustomer => {
+      if (!prevCustomer || prevCustomer.id !== foundMemberId) return prevCustomer;
+
+      return {
+        ...prevCustomer,
+        borrowedBags: prevCustomer.borrowedBags.filter(item => item !== targetBag),
+        esgPoints: prevCustomer.esgPoints + 50,
+        co2Saved: Number((prevCustomer.co2Saved + 0.15).toFixed(2)),
+      };
+    });
+
+    showToast(`♻️ 衣袋 ${targetBag} 歸還成功！(情況：${condition}) 歸還會員：${foundMemberName} (+50 配客點)`);
+    return true;
+  };
+
+  const handleCheckoutReturnBag = () => {
+    if (!selectedCustomer) {
+      showToast('請先選擇會員再登記歸還衣袋。');
+      return;
+    }
+
+    const targetBag = normalizeBagId(checkoutReturnBagId);
+    if (!targetBag) return;
+
+    if (!selectedCustomer.borrowedBags.includes(targetBag)) {
+      showToast(`⚠️ 該會員未借用此衣袋 ${targetBag}。`);
+      return;
+    }
+
+    if (returnBagById(targetBag, checkoutReturnBagCondition)) {
+      setCheckoutReturnBagId('');
+      setCheckoutReturnBagCondition('良好');
+    }
+  };
+
+  const handleCustomerPickup = (orderId: string) => {
+    const order = orders.find(item => item.id === orderId);
+    if (!order) return;
+
+    setOrders(prev => prev.map(item => (item.id === orderId ? { ...item, status: '已取件' } : item)));
+
+    if (order.memberId && order.memberId !== 'GUEST' && order.bagId) {
+      const targetBag = order.bagId;
+      setCustomers(prev =>
+        prev.map(customer => {
+          if (customer.id !== order.memberId) return customer;
+          return {
+            ...customer,
+            borrowedBags: customer.borrowedBags.filter(bag => bag !== targetBag),
+            esgPoints: customer.esgPoints + 50,
+            co2Saved: Number((customer.co2Saved + 0.15).toFixed(2)),
+          };
+        }),
+      );
+      markBagReturned(targetBag);
+      showToast(`✅ 歸還衣袋 ${targetBag} 成功！${order.customerName} 取件完成！`);
+    } else {
+      showToast(`✅ 散客訂單 ${orderId} 取件成功！`);
+    }
+  };
+
+  const handleQuickReturnSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetBag = normalizeBagId(quickReturnBagId);
+    if (!targetBag) return;
+
+    if (returnBagById(targetBag, quickReturnBagCondition)) {
+      setQuickReturnBagId('');
+      setQuickReturnBagCondition('良好');
+      setIsQuickReturnOpen(false);
+    }
+  };
+
+  const handleCreateMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberName.trim() || !newMemberPhone.trim()) {
+      showToast('請輸入會員姓名與電話');
+      return;
+    }
+
+    const newId = `MEM-${String(customers.length + 1).padStart(4, '0')}`;
+    const newCustomer: Customer = {
+      id: newId,
+      name: newMemberName.trim(),
+      phone: newMemberPhone.trim(),
+      level: '新芽會員',
+      esgPoints: 100,
+      co2Saved: 0,
+      borrowedBags: [],
+      lastVisit: '今日',
+      totalOrders: 0,
+      balance: 0,
+      totalSpent: 0,
+      habits: '新註冊會員，無備註',
+    };
+
+    setCustomers(prev => [newCustomer, ...prev]);
+    setSelectedCustomer(newCustomer);
+    setNewMemberName('');
+    setNewMemberPhone('');
+    setIsAddMemberOpen(false);
+    showToast(`新會員 ${newCustomer.name} 建立成功！`);
+  };
+
+  const handleTopUpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!topUpCustomer) return;
+
+    const amount = Number(topUpAmount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      showToast('請輸入正確的儲值金額');
+      return;
+    }
+
+    setCustomers(prev => prev.map(customer => (customer.id === topUpCustomer.id ? { ...customer, balance: customer.balance + amount } : customer)));
+    if (selectedCustomer && selectedCustomer.id === topUpCustomer.id) {
+      setSelectedCustomer(prev => (prev ? { ...prev, balance: prev.balance + amount } : prev));
+    }
+
+    setIsTopUpOpen(false);
+    setTopUpAmount('');
+    showToast(`儲值成功！${topUpCustomer.name} 已成功儲值 $${amount} 元。`);
+  };
+
+  const handleSaveHabit = (id: string) => {
+    setCustomers(prev => prev.map(customer => (customer.id === id ? { ...customer, habits: tempHabitText } : customer)));
+    if (selectedCustomer?.id === id) {
+      setSelectedCustomer(prev => (prev ? { ...prev, habits: tempHabitText } : prev));
+    }
+    setEditingHabitId(null);
+    setTempHabitText('');
+    showToast('顧客習性備註已成功儲存！');
+  };
+
+  const handleSendCampaign = () => {
+    if (!customSmsContent.trim()) {
+      showToast('⚠️ 推播內容不可為空！');
+      return;
+    }
+
+    const newCampaign: Campaign = {
+      id: `CAM-${String(campaignHistory.length + 1).padStart(2, '0')}`,
+      name: marketingSegment === 'eco_fans' ? '精準推播 - 環保先鋒' : marketingSegment === 'inactive' ? '精準推播 - 久未到店' : '精準推播 - 尊榮會員',
+      segment: marketingSegment === 'eco_fans' ? '環保急先鋒' : marketingSegment === 'inactive' ? '久未到店客' : '高價值會員',
+      date: '今日',
+      count: marketingSegment === 'eco_fans' ? customers.filter(customer => customer.co2Saved > 10).length : customers.length,
+      content: customSmsContent,
+      status: '已發送',
+    };
+
+    setCampaignHistory(prev => [newCampaign, ...prev]);
+    showToast('✉️ 智慧再行銷推播訊息已通過 Line / SMS 發送完畢！');
+  };
 
   return (
-    <div className="flex h-screen bg-[#f4f7f6] font-sans text-slate-800 overflow-hidden">
-      
-      {/* ==========================================
-          左側主選單
-          ========================================== */}
-      <aside className="w-64 bg-[#3f8f61] text-white flex flex-col justify-between shadow-xl shrink-0 z-10">
-        <div>
-          {/* Logo 標題 */}
-          <div className="p-6 bg-[#327750] flex items-center gap-3">
-            <div className="bg-white/10 p-2 rounded-xl text-white">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="font-extrabold text-base tracking-wider">營運管理系統</h1>
-              <span className="text-[10px] text-emerald-100 opacity-80 font-semibold tracking-widest block">GREEN CLEAN POS</span>
-            </div>
-          </div>
-
-          {/* 備援快速按鈕 */}
-          <div className="px-4 py-3 space-y-2 border-b border-white/10 bg-[#378156]">
-            <button
-              type="button"
-              onClick={() => {
-                setQuickReturnBagId('');
-                setQuickReturnBagCondition('良好');
-                setIsQuickReturnOpen(true);
-              }}
-              className="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs py-2 rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              ♻️ 快速歸還衣袋
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('checkout');
-                showToast('已轉到送洗收銀台');
-              }}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs py-2 rounded-lg transition-all duration-150 flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              🧺 登記送洗
-            </button>
-          </div>
-
-          {/* 導航功能清單 (7 大分頁) */}
-          <nav className="px-3 py-4 space-y-1">
-            {[
-              { id: 'dashboard', name: '首頁', icon: '🏠' },
-              { id: 'orders', name: '訂單管理', icon: '📋' },
-              { id: 'members', name: '客戶管理', icon: '👤' },
-              { id: 'checkout', name: '衣物管理', icon: '👕' },
-              { id: 'inventory', name: '庫存管理', icon: '📦' },
-              { id: 'reports', name: '報表分析', icon: '📊' },
-              { id: 'settings', name: '系統設定', icon: '⚙️' },
-            ].map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setSelectedOrderIds([]);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-sm font-semibold text-left ${
-                  activeTab === item.id 
-                    ? 'bg-[#ffffff] text-[#3f8f61] shadow-lg' 
-                    : 'text-emerald-50 hover:bg-[#378156]'
-                }`}
-              >
-                <span className="text-base">{item.icon}</span>
-                {item.name}
-              </button>
-            ))}
-          </nav>
+    <div className="min-h-screen bg-slate-100 text-slate-800 flex">
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-bold">
+          {toastMessage}
         </div>
+      )}
+
+      <aside className="w-64 bg-[#3f8f61] text-white shrink-0 flex flex-col shadow-2xl">
+        <div className="p-6 border-b border-white/10">
+          <div className="text-2xl font-black tracking-tight">GREEN CLEAN</div>
+          <div className="text-xs text-emerald-100 mt-1">智慧乾洗 POS 營運管理系統</div>
+        </div>
+
+        <div className="p-3 space-y-2 border-b border-white/10">
+          <button
+            type="button"
+            onClick={() => {
+              setQuickReturnBagId('');
+              setQuickReturnBagCondition('良好');
+              setIsQuickReturnOpen(true);
+            }}
+            className="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            ♻️ 快速歸還衣袋
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('checkout');
+              showToast('已轉到送洗收銀台');
+            }}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs py-2 rounded-lg transition flex items-center justify-center gap-1.5 shadow-sm"
+          >
+            登記送洗
+          </button>
+        </div>
+
+        <nav className="px-3 py-4 space-y-1 flex-1">
+          {[
+            { id: 'dashboard' as TabId, name: '首頁', icon: '🏠' },
+            { id: 'orders' as TabId, name: '訂單管理', icon: '📋' },
+            { id: 'members' as TabId, name: '客戶管理', icon: '👥' },
+            { id: 'checkout' as TabId, name: '衣物管理', icon: '🧺' },
+            { id: 'inventory' as TabId, name: '庫存管理', icon: '📦' },
+            { id: 'reports' as TabId, name: '報表分析', icon: '📊' },
+            { id: 'settings' as TabId, name: '系統設定', icon: '⚙️' },
+          ].map(item => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setActiveTab(item.id);
+                setSelectedOrderIds([]);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-sm font-semibold text-left ${
+                activeTab === item.id ? 'bg-white text-[#3f8f61] shadow-lg' : 'text-emerald-50 hover:bg-[#378156]'
+              }`}
+            >
+              <span>{item.icon}</span>
+              {item.name}
+            </button>
+          ))}
+        </nav>
 
         <div className="p-4 bg-[#327750] text-xs">
           <div className="font-semibold text-emerald-100">綠潔台北忠孝旗艦店</div>
@@ -675,78 +1066,48 @@ export default function App() {
         </div>
       </aside>
 
-      {/* ==========================================
-          右側工作區域
-          ========================================== */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative z-10">
-        
-        {/* 頂部輕量級 Header */}
-        <header className="bg-white border-b border-slate-200 py-4 px-8 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-slate-800">
-              {activeTab === 'dashboard' && '首頁'}
-              {activeTab === 'orders' && '訂單管理'}
-              {activeTab === 'members' && '客戶管理'}
-              {activeTab === 'checkout' && '衣物管理 / 收銀登記'}
-              {activeTab === 'inventory' && '庫存管理'}
-              {activeTab === 'reports' && '報表分析'}
-              {activeTab === 'settings' && '系統設定'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-6 text-sm text-slate-500 font-medium">
+      <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <header className="bg-white border-b border-slate-200 py-4 px-8 flex justify-between items-center shrink-0 sticky top-0 z-20">
+          <h2 className="text-xl font-bold text-slate-800">
+            {activeTab === 'dashboard' && '首頁'}
+            {activeTab === 'orders' && '訂單管理'}
+            {activeTab === 'members' && '客戶管理'}
+            {activeTab === 'checkout' && '衣物管理 / 收銀登記'}
+            {activeTab === 'inventory' && '庫存管理'}
+            {activeTab === 'reports' && '報表分析'}
+            {activeTab === 'settings' && '系統設定'}
+          </h2>
+          <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
             <span>營運在線</span>
-            <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
           </div>
         </header>
 
-        {/* 核心內容渲染 */}
-        <div className="p-8 flex-1 min-h-0">
-          
-          {/* 1. 首頁 */}
+        <div className="p-8 flex-1">
           {activeTab === 'dashboard' && (
             <div className="space-y-6">
-              
-              {/* 4 大指標卡片 */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
-                  <div className="text-slate-400 text-xs font-semibold">今日訂單</div>
-                  <div className="text-3xl font-bold text-slate-800">128 <span className="text-xs text-slate-500">筆</span></div>
-                  <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-0.5">↑ 12% <span className="text-slate-400 font-normal">相較昨日</span></div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
-                  <div className="text-slate-400 text-xs font-semibold">待處理訂單</div>
-                  <div className="text-3xl font-bold text-slate-800">45 <span className="text-xs text-slate-500">筆</span></div>
-                  <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-0.5">↑ 8% <span className="text-slate-400 font-normal">相較上週</span></div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
-                  <div className="text-slate-400 text-xs font-semibold">今日營收</div>
-                  <div className="text-3xl font-bold text-slate-800">$48,650</div>
-                  <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-0.5">↑ 15% <span className="text-slate-400 font-normal">相較昨日</span></div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100 space-y-1">
-                  <div className="text-slate-400 text-xs font-semibold">會員總數</div>
-                  <div className="text-3xl font-bold text-slate-800">1,256 <span className="text-xs text-slate-500">人</span></div>
-                  <div className="text-[11px] text-emerald-600 font-bold flex items-center gap-0.5">↑ 7% <span className="text-slate-400 font-normal">本月新增</span></div>
-                </div>
+                <MetricCard title="今日訂單" value={`${Math.max(todayOrders, 128)}`} unit="筆" hint="即時累計今日收件" />
+                <MetricCard title="待處理訂單" value={`${pendingOrders}`} unit="筆" hint="未完成取件訂單" />
+                <MetricCard title="累計營收" value={`$${totalRevenue.toLocaleString()}`} hint="依目前訂單加總" />
+                <MetricCard title="會員總數" value={`${totalMembers}`} unit="人" hint="已建立會員資料" />
               </div>
 
-              {/* 折線圖與比例圓環圖 */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                
-                {/* 營收趨勢 */}
-                <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-slate-700">營收趨勢</h3>
-                    <div className="bg-slate-100 rounded-lg p-0.5 flex gap-1">
-                      {['年', '季', '月'].map(view => (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h3 className="text-lg font-black text-slate-800">營收趨勢</h3>
+                      <p className="text-xs text-slate-400 mt-1">展示店鋪營運成長狀況</p>
+                    </div>
+                    <div className="flex bg-slate-100 rounded-xl p-1">
+                      {(['年', '季', '月'] as const).map(view => (
                         <button
                           key={view}
                           type="button"
                           onClick={() => setDashboardChartView(view)}
-                          className={`px-3 py-1 text-xs font-bold rounded transition-all ${
-                            dashboardChartView === view 
-                              ? 'bg-[#3f8f61] text-white shadow-sm' 
-                              : 'text-slate-600 hover:text-slate-900'
+                          className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                            dashboardChartView === view ? 'bg-[#3f8f61] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'
                           }`}
                         >
                           {view}
@@ -754,537 +1115,347 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  
-                  <div className="relative bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <svg className="w-full h-48 overflow-visible" viewBox="0 0 500 150">
-                      <line x1="40" y1="30" x2="470" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="40" y1="70" x2="470" y2="70" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="40" y1="110" x2="470" y2="110" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="40" y1="130" x2="470" y2="130" stroke="#cbd5e1" strokeWidth="1" />
-                      <line x1="40" y1="15" x2="40" y2="130" stroke="#cbd5e1" strokeWidth="1" />
-
-                      <defs>
-                        <linearGradient id="dbAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#3f8f61" stopOpacity="0.25" />
-                          <stop offset="100%" stopColor="#3f8f61" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      <polygon 
-                        points={`${dbPoints[0].x},130 ` + dbPolylinePoints + ` ${dbPoints[dbPoints.length - 1].x},130`}
-                        fill="url(#dbAreaGrad)"
-                      />
-
-                      <polyline
-                        fill="none"
-                        stroke="#3f8f61"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={dbPolylinePoints}
-                      />
-                      
-                      {dbPoints.map((p, idx) => (
-                        <g key={idx}>
-                          <circle cx={p.x} cy={p.y} r="5.5" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
-                          <circle cx={p.x} cy={p.y} r="2" fill="#3f8f61" />
-                          
-                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="10" fontWeight="bold" fill="#0f172a">
-                            {p.val}
-                          </text>
-                          <text x={p.x} y="145" textAnchor="middle" fontSize="10" fill="#94a3b8" fontWeight="semibold">
-                            {p.label}
-                          </text>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
+                  <svg viewBox="0 0 520 180" className="w-full h-64 bg-slate-50 rounded-2xl border border-slate-100">
+                    <line x1="40" y1="145" x2="500" y2="145" stroke="#cbd5e1" strokeWidth="2" />
+                    <line x1="40" y1="20" x2="40" y2="145" stroke="#cbd5e1" strokeWidth="2" />
+                    <polyline points={dbPolylinePoints} fill="none" stroke="#3f8f61" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    {dbPoints.map(point => (
+                      <g key={point.label}>
+                        <circle cx={point.x} cy={point.y} r="6" fill="#3f8f61" />
+                        <text x={point.x} y={point.y - 12} textAnchor="middle" className="text-[11px] fill-slate-700 font-bold">
+                          {point.val}
+                        </text>
+                        <text x={point.x} y="168" textAnchor="middle" className="text-[11px] fill-slate-500 font-semibold">
+                          {point.label}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
                 </div>
 
-                {/* 訂單狀態比例 (圓環圖) */}
-                <div className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-700">訂單狀態比例</h3>
-                  <div className="flex items-center justify-between">
-                    <div className="relative w-32 h-32 shrink-0">
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <path className="text-slate-100" strokeWidth="4" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path className="text-[#3f8f61]" strokeDasharray="60, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path className="text-amber-500" strokeDasharray="25, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" strokeDashoffset="-60" />
-                        <path className="text-blue-500" strokeDasharray="15, 100" strokeWidth="4.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" strokeDashoffset="-85" />
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-xl font-bold text-slate-800">128</span>
-                        <span className="text-[10px] text-slate-400">總筆數</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5 text-xs font-semibold text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-[#3f8f61]"></span>
-                        <span>已完成 (60%)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-amber-500"></span>
-                        <span>待處理 (25%)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-blue-500"></span>
-                        <span>處理中 (15%)</span>
-                      </div>
-                    </div>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                  <h3 className="text-lg font-black text-slate-800 mb-4">訂單狀態比例</h3>
+                  <div className="space-y-4">
+                    {ORDER_STATUS_OPTIONS.map(status => {
+                      const count = orders.filter(order => order.status === status).length;
+                      const percent = orders.length ? Math.round((count / orders.length) * 100) : 0;
+                      return (
+                        <div key={status}>
+                          <div className="flex justify-between text-xs font-bold text-slate-500 mb-1">
+                            <span>{status}</span>
+                            <span>{count} 筆 / {percent}%</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#3f8f61] rounded-full" style={{ width: `${percent}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-
-              </div>
-
-              {/* 客戶資料 */}
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-                <h3 className="text-sm font-bold text-slate-700 mb-4">客戶資料摘要</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 text-slate-400 pb-2.5 font-bold">
-                        <th className="pb-2">會員編號</th>
-                        <th className="pb-2">姓名</th>
-                        <th className="pb-2">聯絡電話</th>
-                        <th className="pb-2">消費次數</th>
-                        <th className="pb-2">累積消費金額</th>
-                        <th className="pb-2">會員等級</th>
-                        <th className="pb-2">最後消費日期</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 text-slate-600">
-                      {customers.map((c, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          <td className="py-3 font-mono font-bold text-emerald-800">{c.id}</td>
-                          <td className="py-3 font-semibold text-slate-800">{c.name}</td>
-                          <td className="py-3 font-mono">{c.phone}</td>
-                          <td className="py-3 font-bold">{c.totalOrders}</td>
-                          <td className="py-3 font-mono font-extrabold text-slate-700">${c.totalSpent.toLocaleString()}</td>
-                          <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              c.level === '金卡' ? 'bg-amber-100 text-amber-800' :
-                              c.level === '銀卡' ? 'bg-slate-200 text-slate-800' : 'bg-orange-100 text-orange-800'
-                            }`}>
-                              {c.level}
-                            </span>
-                          </td>
-                          <td className="py-3 font-mono">{c.lastVisit}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
 
+              <CustomerSummaryTable customers={customers.slice(0, 5)} />
             </div>
           )}
 
-          {/* ==========================================
-              2. 訂單管理
-              ========================================== */}
           {activeTab === 'orders' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-4">
-              <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center border-b border-slate-100 pb-3">
-                <div className="flex flex-wrap gap-1.5">
-                  {['全部', '清洗中', '整燙中', '包裝中', '待取件', '已取件'].map((status) => (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-wrap gap-2 items-center justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {(['全部', ...ORDER_STATUS_OPTIONS] as Array<'全部' | OrderStatus>).map(status => (
                     <button
                       key={status}
+                      type="button"
                       onClick={() => {
                         setOrderStatusFilter(status);
                         setSelectedOrderIds([]);
                       }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                         orderStatusFilter === status ? 'bg-[#3f8f61] text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      {status}
-                      <span className="text-[10px] opacity-75">
-                        ({status === '全部' ? orders.length : orders.filter(o => o.status === status).length})
-                      </span>
+                      {status} ({status === '全部' ? orders.length : orders.filter(order => order.status === status).length})
                     </button>
                   ))}
                 </div>
 
                 {selectedOrderIds.length > 0 && (
-                  <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 text-xs">
-                    <span className="font-bold text-[#3f8f61]">已選 {selectedOrderIds.length} 筆：</span>
-                    {['清洗中', '整燙中', '包裝中', '已取件'].map(state => (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    已選 {selectedOrderIds.length} 筆：
+                    {ORDER_STATUS_OPTIONS.map(status => (
                       <button
-                        key={state}
-                        onClick={() => handleBatchStatusChange(state)}
-                        className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded text-xs hover:bg-emerald-600 hover:text-white"
+                        key={status}
+                        type="button"
+                        onClick={() => handleBatchStatusChange(status)}
+                        className="bg-white text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded hover:bg-emerald-600 hover:text-white"
                       >
-                        批次-{state}
+                        批次-{status}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 pb-2">
-                      <th className="pb-2 pl-2 w-8">
-                        <input
-                          type="checkbox"
-                          checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
-                          onChange={() => {
-                            if (selectedOrderIds.length === filteredOrders.length) {
-                              setSelectedOrderIds([]);
-                            } else {
-                              setSelectedOrderIds(filteredOrders.map(o => o.id));
-                            }
-                          }}
-                        />
-                      </th>
-                      <th className="pb-2">訂單編號</th>
-                      <th className="pb-2">會員資訊</th>
-                      <th className="pb-2">衣物項目 & 顏色</th>
-                      <th className="pb-2">當前狀態 ｜ 包裝袋</th>
-                      <th className="pb-2">費用</th>
-                      <th className="pb-2 text-center">狀態調整(自由切換)</th>
-                      <th className="pb-2 text-center">流程操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {filteredOrders.map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50">
-                        <td className="py-3 pl-2">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-xs text-slate-400">
+                      <tr>
+                        <th className="px-4 py-3 text-left">
                           <input
                             type="checkbox"
-                            checked={selectedOrderIds.includes(order.id)}
+                            checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
                             onChange={() => {
-                              if (selectedOrderIds.includes(order.id)) {
-                                setSelectedOrderIds(selectedOrderIds.filter(id => id !== order.id));
-                              } else {
-                                setSelectedOrderIds([...selectedOrderIds, order.id]);
-                              }
+                              if (selectedOrderIds.length === filteredOrders.length) setSelectedOrderIds([]);
+                              else setSelectedOrderIds(filteredOrders.map(order => order.id));
                             }}
                           />
-                        </td>
-                        <td className="py-3 font-mono font-bold text-slate-800">{order.id}</td>
-                        <td className="py-3">
-                          <div className="font-bold">{order.customerName}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{order.memberId}</div>
-                        </td>
-                        <td className="py-3 text-slate-600">
-                          {order.items.map((it: any, idx: number) => (
-                            <div key={idx} className="text-[11px] mb-1">
-                              <span className="font-bold text-slate-800">{it.type} ({it.color})</span>
-                              {/* 🌟 顯示衣服專屬編號 */}
-                              <div className="font-mono text-[10px] text-emerald-600 bg-emerald-50 inline-block px-1 rounded ml-1 border border-emerald-100">
-                                碼: {it.garmentId || '未綁定'}
-                              </div>
-                            </div>
-                          ))}
-                        </td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            order.status === '待取件' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {order.status}
-                          </span>
-                          <div className="text-[10px] mt-1 font-mono text-emerald-700">
-                            {order.bagId ? `🏷️袋: ${order.bagId}` : order.memberId === 'GUEST' ? '紙袋' : '未綁定'}
-                          </div>
-                        </td>
-                        <td className="py-3 font-mono font-bold text-slate-700">${order.total}</td>
-                        <td className="py-3 text-center">
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleSingleStatusChange(order.id, e.target.value)}
-                            className="bg-white border rounded p-1 text-[11px] focus:outline-none"
-                          >
-                            <option value="清洗中">清洗中</option>
-                            <option value="整燙中">整燙中</option>
-                            <option value="包裝中">包裝中</option>
-                            <option value="待取件">待取件</option>
-                            <option value="已取件">已取件</option>
-                          </select>
-                        </td>
-                        <td className="py-3 text-center">
-                          {order.status === '包裝中' && order.memberId !== 'GUEST' && (
-                            <button
-                              type="button"
-                              onClick={() => openBagBindingModal(order.id)}
-                              className="bg-emerald-600 text-white font-bold px-2.5 py-1 rounded hover:bg-emerald-750 transition active:scale-95 text-[11px]"
-                            >
-                              包裝綁定衣袋
-                            </button>
-                          )}
-                          {order.status === '待取件' && (
-                            <div className="flex justify-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const updated = orders.map(o => o.id === order.id ? { ...o, lineSent: true } : o);
-                                  setOrders(updated);
-                                  // 🌟 抓取所有衣服編號並顯示在通知中
-                                  const allGarmentIds = order.items.map((it: any) => it.garmentId || '未綁定').join(', ');
-                                  showToast(`💬 取件通知已傳送：用袋【${order.bagId}】。包含衣物: [${allGarmentIds}]`);
-                                }}
-                                className={`px-2 py-1 rounded text-[11px] font-bold transition ${
-                                  order.lineSent ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                }`}
-                              >
-                                {order.lineSent ? '已傳通知' : '傳送通知'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleCustomerPickup(order.id)}
-                                className="bg-indigo-600 text-white font-bold px-2 py-1 rounded text-[11px]"
-                              >
-                                歸還取件
-                              </button>
-                            </div>
-                          )}
-                          {order.status === '已取件' && <span className="text-slate-400">已結案</span>}
-                        </td>
+                        </th>
+                        <th className="px-4 py-3 text-left">訂單編號</th>
+                        <th className="px-4 py-3 text-left">會員資訊</th>
+                        <th className="px-4 py-3 text-left">衣物項目 & 編號</th>
+                        <th className="px-4 py-3 text-left">狀態 / 衣袋</th>
+                        <th className="px-4 py-3 text-left">費用</th>
+                        <th className="px-4 py-3 text-left">操作</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* ==========================================
-              3. 客戶管理
-              ========================================== */}
-          {activeTab === 'members' && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-base font-bold text-slate-800">數位會員名冊與習性記錄</h3>
-                <div className="relative w-64">
-                  <input 
-                    type="text" 
-                    placeholder="搜尋會員編號、手機或名字..."
-                    value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-1.5 pl-3 pr-8 text-xs focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 pb-2">
-                      <th className="pb-2">會員編號</th>
-                      <th className="pb-2">姓名 ｜ 電話</th>
-                      <th className="pb-2">儲值金餘額</th>
-                      <th className="pb-2">未歸還之衣袋編碼</th>
-                      <th className="pb-2">專屬習性 ｜ 備註</th>
-                      <th className="pb-2 text-center">借袋個數</th>
-                      <th className="pb-2 text-right">配客點 ｜ 累計碳減量</th>
-                      <th className="pb-2 text-center">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {customers
-                      .filter(c => c.name.includes(memberSearch) || c.phone.includes(memberSearch) || c.id.includes(memberSearch))
-                      .map(c => (
-                        <tr key={c.id} className="hover:bg-slate-50">
-                          <td className="py-3 font-mono font-bold text-slate-700">{c.id}</td>
-                          <td className="py-3">
-                            <div className="font-bold text-slate-800">{c.name}</div>
-                            <div className="text-[10px] text-slate-500">{c.phone}</div>
-                          </td>
-                          <td className="py-3 font-mono font-bold text-[#3f8f61]">${c.balance}</td>
-                          <td className="py-3">
-                            {c.borrowedBags.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {c.borrowedBags.map(bag => (
-                                  <span key={bag} className="font-mono text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded font-bold">
-                                    🏷️ {bag}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-[#3f8f61] font-semibold text-[10px]">✅ 無借袋</span>
-                            )}
-                          </td>
-                          <td className="py-3 max-w-[200px]">
-                            {editingHabitId === c.id ? (
-                              <div className="flex gap-1.5 items-center">
-                                <input 
-                                  type="text"
-                                  value={tempHabitText}
-                                  onChange={(e) => setTempHabitText(e.target.value)}
-                                  className="border rounded p-1 text-[11px] w-full focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 font-semibold"
-                                />
-                                <button 
-                                  onClick={() => handleSaveHabit(c.id)}
-                                  className="bg-emerald-600 text-white rounded px-2 py-1 text-[10px] font-black"
-                                >
-                                  存
-                                </button>
-                                <button 
-                                  onClick={() => setEditingHabitId(null)}
-                                  className="bg-slate-200 text-slate-700 rounded px-2 py-1 text-[10px]"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex justify-between items-center gap-1 group">
-                                <span className="text-slate-600 line-clamp-2">{c.habits || '無備註'}</span>
-                                <button 
-                                  onClick={() => {
-                                    setEditingHabitId(c.id);
-                                    setTempHabitText(c.habits || '');
-                                  }}
-                                  className="text-[#3f8f61] hover:underline font-bold opacity-0 group-hover:opacity-100 transition shrink-0 ml-1 text-[10px]"
-                                >
-                                  ✍️ 編輯
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-3 text-center font-bold">{c.borrowedBags.length}</td>
-                          <td className="py-3 text-right">
-                            <div className="font-bold">{c.esgPoints} P</div>
-                            <div className="text-[10px] text-emerald-600">-{c.co2Saved} kg</div>
-                          </td>
-                          <td className="py-3 text-center space-x-1 whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTopUpCustomer(c);
-                                setTopUpAmount('');
-                                setIsTopUpOpen(true);
+                    </thead>
+                    <tbody>
+                      {filteredOrders.map(order => (
+                        <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrderIds.includes(order.id)}
+                              onChange={() => {
+                                if (selectedOrderIds.includes(order.id)) setSelectedOrderIds(selectedOrderIds.filter(id => id !== order.id));
+                                else setSelectedOrderIds([...selectedOrderIds, order.id]);
                               }}
-                              className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[11px] font-bold hover:bg-[#3f8f61] hover:text-white transition"
-                            >
-                              加值
-                            </button>
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-mono font-black text-emerald-700">{order.id}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-700">{order.customerName}</div>
+                            <div className="text-xs text-slate-400">{order.memberId}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="space-y-1">
+                              {order.items.map((item, index) => (
+                                <div key={`${order.id}-${item.garmentId}-${index}`} className="text-xs text-slate-600">
+                                  {item.name}（{item.color}）<span className="font-mono text-emerald-700 font-bold">{item.garmentId}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-black text-slate-700">{order.status}</div>
+                            <div className="text-xs text-slate-400">{order.bagId ? `袋：${order.bagId}` : order.memberId === 'GUEST' ? '紙袋' : '未綁定'}</div>
+                          </td>
+                          <td className="px-4 py-3 font-black">${order.total}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap gap-2">
+                              <select
+                                value={order.status}
+                                onChange={event => handleSingleStatusChange(order.id, event.target.value as OrderStatus)}
+                                className="bg-white border rounded-lg px-2 py-1 text-xs focus:outline-none"
+                              >
+                                {ORDER_STATUS_OPTIONS.map(status => (
+                                  <option key={status} value={status}>{status}</option>
+                                ))}
+                              </select>
+                              {order.status === '包裝中' && order.memberId !== 'GUEST' && (
+                                <button type="button" onClick={() => openBagBindingModal(order.id)} className="bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg hover:bg-emerald-700 text-xs">
+                                  綁定衣袋
+                                </button>
+                              )}
+                              {order.status === '待取件' && (
+                                <button type="button" onClick={() => handleCustomerPickup(order.id)} className="bg-slate-900 text-white font-bold px-2.5 py-1 rounded-lg hover:bg-slate-700 text-xs">
+                                  完成取件
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
 
-          {/* ==========================================
-              4. 衣物管理 (收銀台)
-              ========================================== */}
-          {activeTab === 'checkout' && (
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 h-full">
-              
-              {/* 左側資訊填寫欄位 */}
-              <div className="xl:col-span-7 flex flex-col gap-6">
-                
-                {/* 步驟一：連結數位會員 */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-sm font-bold text-slate-700">👤 第一步：會員資料檢索</h3>
-                    <button 
-                      type="button"
-                      onClick={() => setIsAddMemberOpen(true)}
-                      className="text-xs text-emerald-600 bg-emerald-50 hover:bg-emerald-100 font-bold px-3 py-1 rounded-lg"
-                    >
-                      + 快速註冊數位會員
-                    </button>
+          {activeTab === 'members' && (
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col md:flex-row gap-3 justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-slate-800">會員管理</h3>
+                  <p className="text-sm text-slate-500 mt-1">管理會員資料、儲值金、配客點與未歸還衣袋。</p>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={memberSearch}
+                    onChange={event => setMemberSearch(event.target.value)}
+                    placeholder="搜尋會員姓名 / 電話 / 編號"
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none"
+                  />
+                  <button type="button" onClick={() => setIsAddMemberOpen(true)} className="bg-[#3f8f61] text-white font-black px-4 py-2 rounded-xl text-sm">
+                    新增會員
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {filteredCustomers.map(customer => (
+                  <div key={customer.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-lg font-black text-slate-800">{customer.name}</h4>
+                          <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">{customer.level}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-1">{customer.id} / {customer.phone}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTopUpCustomer(customer);
+                          setTopUpAmount('');
+                          setIsTopUpOpen(true);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-2 rounded-xl h-fit"
+                      >
+                        快速儲值
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3 mt-4">
+                      <SmallStat title="儲值金" value={`$${customer.balance}`} />
+                      <SmallStat title="配客點" value={`${customer.esgPoints}P`} />
+                      <SmallStat title="減碳量" value={`${customer.co2Saved}kg`} />
+                    </div>
+
+                    <div className="mt-4 text-sm">
+                      <div className="font-bold text-slate-500 mb-1">未歸還衣袋</div>
+                      {customer.borrowedBags.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {customer.borrowedBags.map(bag => (
+                            <span key={bag} className="bg-red-50 text-red-700 border border-red-200 rounded-lg px-2 py-1 text-xs font-black font-mono">{bag}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">無未歸還衣袋</span>
+                      )}
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="font-bold text-slate-500 text-sm mb-1">顧客備註</div>
+                      {editingHabitId === customer.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={tempHabitText}
+                            onChange={event => setTempHabitText(event.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs focus:outline-none min-h-[70px]"
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button type="button" onClick={() => setEditingHabitId(null)} className="text-xs font-bold text-slate-400">取消</button>
+                            <button type="button" onClick={() => handleSaveHabit(customer.id)} className="text-xs font-bold bg-[#3f8f61] text-white px-3 py-1 rounded-lg">儲存</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingHabitId(customer.id);
+                            setTempHabitText(customer.habits);
+                          }}
+                          className="w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl p-3 text-xs text-slate-600"
+                        >
+                          {customer.habits}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="請掃描會員條碼 / 輸入會員編號 / 電話 / 姓名..." 
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'checkout' && (
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2 space-y-6">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                  <h3 className="text-lg font-black text-slate-800 mb-4">第一步：連結會員</h3>
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <input
                       value={searchPhone}
-                      onChange={(e) => setSearchPhone(e.target.value)}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-[#3f8f61]"
-                      onKeyDown={(e) => e.key === 'Enter' && handleCustomerSearch()}
+                      onChange={event => setSearchPhone(event.target.value)}
+                      onKeyDown={event => event.key === 'Enter' && handleCustomerSearch()}
+                      placeholder="輸入電話、姓名或會員編號"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#3f8f61]"
                     />
-                    <button 
-                      type="button"
-                      onClick={handleCustomerSearch}
-                      className="bg-[#3f8f61] hover:bg-[#327750] text-white text-sm font-bold px-5 rounded-xl transition"
-                    >
-                      帶入
+                    <button type="button" onClick={handleCustomerSearch} className="bg-[#3f8f61] text-white font-black px-5 py-3 rounded-xl text-sm">
+                      查詢會員
+                    </button>
+                    <button type="button" onClick={() => setIsAddMemberOpen(true)} className="bg-slate-900 text-white font-black px-5 py-3 rounded-xl text-sm">
+                      新增會員
                     </button>
                   </div>
 
                   {selectedCustomer && (
-                    <div className="mt-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100 flex flex-col gap-3 text-xs">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1">
-                          <div>
-                            <span className="font-extrabold text-slate-900 text-sm">{selectedCustomer.name}</span>
-                            <span className="text-xs text-slate-500 ml-2 font-mono">({selectedCustomer.id})</span>
-                          </div>
-                          <div className="text-xs text-emerald-800 font-bold">
-                            儲值金餘額：<span className="text-emerald-700 font-extrabold text-sm">${selectedCustomer.balance} 元</span>
-                            <span className="text-slate-300 mx-2">|</span>
-                            配客點：{selectedCustomer.esgPoints} P
-                          </div>
-                          <div className="text-[11px] text-emerald-900 font-medium">
-                            👤 顧客備註：<span className="font-semibold text-slate-700">{selectedCustomer.habits || '無備註'}</span>
-                          </div>
-                          <div className="text-[11px] text-emerald-900 font-medium mt-1">
-                            🎒 未歸還衣袋：
-                            {selectedCustomer.borrowedBags && selectedCustomer.borrowedBags.length > 0 ? (
-                              <span className="font-semibold text-red-600">
-                                {selectedCustomer.borrowedBags.join(', ')}
-                              </span>
-                            ) : (
-                              <span className="font-semibold text-slate-700">無未歸還衣袋</span>
-                            )}
+                    <div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-2xl p-4">
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <div className="font-black text-emerald-800">{selectedCustomer.name} / {selectedCustomer.id}</div>
+                          <div className="text-xs text-emerald-700 mt-1">儲值金餘額：${selectedCustomer.balance} 元 | 配客點：{selectedCustomer.esgPoints}P</div>
+                          <div className="text-xs text-emerald-700 mt-1">顧客備註：{selectedCustomer.habits || '無備註'}</div>
+                          <div className="text-xs text-emerald-700 mt-1">
+                            未歸還衣袋：{selectedCustomer.borrowedBags.length > 0 ? selectedCustomer.borrowedBags.join(', ') : '無未歸還衣袋'}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setTopUpCustomer(selectedCustomer);
-                                setTopUpAmount('');
-                                setIsTopUpOpen(true);
-                              }}
-                              className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-2 rounded-xl"
-                            >
-                              💰 快速儲值
-                            </button>
-                            <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-slate-400 font-bold">清除</button>
-                          </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTopUpCustomer(selectedCustomer);
+                              setTopUpAmount('');
+                              setIsTopUpOpen(true);
+                            }}
+                            className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black px-3 py-2 rounded-xl"
+                          >
+                            快速儲值
+                          </button>
+                          <button type="button" onClick={() => setSelectedCustomer(null)} className="text-xs text-slate-400 font-bold">
+                            清除
+                          </button>
                         </div>
                       </div>
 
-                      {/* 直接掃描歸還區塊 */}
-                      {selectedCustomer.borrowedBags && selectedCustomer.borrowedBags.length > 0 && (
-                        <div className="border-t border-emerald-200 pt-3 mt-1 flex items-end gap-2">
-                          <div className="flex-1">
-                            <label className="block text-[10px] font-bold text-emerald-800 mb-1">同時登記歸還衣袋</label>
-                            <input 
-                              type="text"
-                              placeholder="請掃描衣袋條碼..."
+                      {selectedCustomer.borrowedBags.length > 0 && (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                          <div className="md:col-span-2">
+                            <label className="text-xs font-black text-emerald-800">同時登記歸還衣袋</label>
+                            <input
                               value={checkoutReturnBagId}
-                              onChange={(e) => setCheckoutReturnBagId(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleCheckoutReturnBag()}
-                              className="w-full bg-white border border-emerald-200 rounded p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono"
+                              onChange={event => setCheckoutReturnBagId(event.target.value)}
+                              onKeyDown={event => event.key === 'Enter' && handleCheckoutReturnBag()}
+                              placeholder="BAG-0001"
+                              className="w-full bg-white border border-emerald-200 rounded-lg p-2 text-xs focus:outline-none font-mono"
                             />
                           </div>
-                          <div className="w-24">
-                            <label className="block text-[10px] font-bold text-emerald-800 mb-1">衣袋狀況</label>
-                            <select 
+                          <div>
+                            <label className="text-xs font-black text-emerald-800">衣袋狀況</label>
+                            <select
                               value={checkoutReturnBagCondition}
-                              onChange={(e) => setCheckoutReturnBagCondition(e.target.value)}
-                              className="w-full bg-white border border-emerald-200 rounded p-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              onChange={event => setCheckoutReturnBagCondition(event.target.value)}
+                              className="w-full bg-white border border-emerald-200 rounded-lg p-2 text-xs focus:outline-none"
                             >
-                              <option value="良好">良好</option>
-                              <option value="輕微破損">輕微破損</option>
-                              <option value="嚴重破損">嚴重破損</option>
-                              <option value="需清潔">需清潔</option>
+                              <option>良好</option>
+                              <option>輕微破損</option>
+                              <option>嚴重破損</option>
+                              <option>需清潔</option>
                             </select>
                           </div>
-                          <button 
-                            type="button"
-                            onClick={handleCheckoutReturnBag} 
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-xs font-bold transition"
-                          >
+                          <button type="button" onClick={handleCheckoutReturnBag} className="bg-emerald-700 text-white text-xs font-black rounded-lg py-2">
                             確認歸還
                           </button>
                         </div>
@@ -1293,326 +1464,252 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-700 mb-3">👕 第二步：登記衣服種類</h3>
-                  <div className="grid grid-cols-4 gap-2">
-                    {ITEM_CATEGORIES.map(cat => (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                  <h3 className="text-lg font-black text-slate-800 mb-4">第二步：登記衣服種類</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {ITEM_CATEGORIES.map(category => (
                       <button
-                        key={cat.id}
+                        key={category.id}
                         type="button"
-                        onClick={() => {
-                          // 移除了 randomId 的產生
-                          setOrderItems([...orderItems, { 
-                            id: `${cat.id}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, 
-                            name: cat.name, 
-                            price: cat.price, 
-                            count: 1, 
-                            material: '純棉',
-                            treatment: '標準清洗',
-                            color: '白色', 
-                            remarks: '',
-                            garmentId: '' // 🌟 預設空白，等待實際掃描
-                          }]);
-                        }}
-                    
-                        className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-xl p-3 text-left transition text-xs"
+                        onClick={() => handleAddCategoryItem(category)}
+                        className="bg-slate-50 hover:bg-emerald-50 border border-slate-100 rounded-xl p-4 text-left transition text-xs"
                       >
-                        <span className="text-xl block mb-1">{cat.icon}</span>
-                        <div className="font-bold text-slate-800">{cat.name}</div>
-                        <div className="text-slate-400 mt-0.5">${cat.price}</div>
+                        <div className="text-2xl mb-2">{category.icon}</div>
+                        <div className="font-black text-slate-700">{category.name}</div>
+                        <div className="text-emerald-700 font-black mt-1">${category.price}</div>
                       </button>
                     ))}
-                    
                     <button
                       type="button"
                       onClick={() => setIsCustomItemOpen(true)}
-                      className="bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl p-3 text-left transition text-xs flex flex-col justify-center items-center"
+                      className="bg-slate-50 hover:bg-slate-100 border border-dashed border-slate-300 rounded-xl p-4 text-xs flex flex-col justify-center items-center"
                     >
-                      <span className="text-xl text-emerald-600 block mb-1 font-bold">➕</span>
-                      <div className="font-bold text-emerald-800">其他衣服</div>
-                      <div className="text-slate-400 mt-0.5">自訂輸入</div>
+                      <div className="text-2xl">➕</div>
+                      <div className="font-black mt-2">其他衣服</div>
+                      <div className="text-slate-400 mt-1">自訂輸入</div>
                     </button>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex-1 flex flex-col min-h-[300px]">
-                  <h3 className="text-sm font-bold text-slate-700 mb-3">🧺 第三步：洗衣購物籃細節</h3>
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                  <h3 className="text-lg font-black text-slate-800 mb-4">第三步：洗衣購物籃細節</h3>
                   {orderItems.length === 0 ? (
-                    <div className="flex-1 flex flex-col justify-center items-center text-slate-400">
-                      <p className="text-xs">請點選上方的衣服種類登錄</p>
+                    <div className="text-sm text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                      請點選上方衣服種類登錄
                     </div>
                   ) : (
-                    <div className="space-y-3 overflow-y-auto max-h-[350px] pr-2">
-                      {orderItems.length === 0 ? (
-                        <div className="flex-1 flex flex-col justify-center items-center text-slate-400">
-                          <p className="text-xs">請點選上方的衣服種類登錄</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 overflow-y-auto max-h-[350px] pr-2">
-                          {/* 🌟 透過 reduce 在畫面上將同名的 items 包裝進同一個框，但不改變變數結構 */}
-                          {(Object.values(orderItems.reduce((acc: any, curr: any, index: number) => {
-                            if (!acc[curr.name]) acc[curr.name] = { name: curr.name, price: curr.price, items: [] };
-                            acc[curr.name].items.push({ ...curr, originalIndex: index });
-                            return acc;
-                          }, {})) as any[]).map((group: any, groupIndex: number) => (
-                            <div key={groupIndex} className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 space-y-3">
-                              
-                              {/* 群組大標題列 */}
-                              <div className="flex justify-between items-center text-xs pb-2 border-b border-slate-200">
-                                <span className="font-bold text-slate-800 text-sm">{group.name}</span>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-slate-500 font-medium">共 {group.items.length} 件</span>
-                                  <button 
-                                    type="button" 
-                                    onClick={() => {
-                                      // 移除了 randomId 的產生
-                                      setOrderItems([...orderItems, { 
-                                        id: `item_${Date.now()}_${Math.random().toString(36).substring(2,5)}`, 
-                                        name: group.name, 
-                                        price: group.price, 
-                                        count: 1, 
-                                        material: '純棉',
-                                        treatment: '標準清洗',
-                                        color: '白色', 
-                                        remarks: '',
-                                        garmentId: '' // 🌟 預設空白，等待實際掃描
-                                      }]);
-                                    }} 
-                                    className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-xs font-bold hover:bg-emerald-100 transition shadow-sm"
+                    <div className="space-y-4">
+                      {groupedOrderItems.map(group => (
+                        <div key={group.name} className="border border-slate-100 rounded-2xl overflow-hidden">
+                          <div className="bg-slate-50 px-4 py-3 flex justify-between items-center">
+                            <div>
+                              <span className="font-black text-slate-800">{group.name}</span>
+                              <span className="text-xs text-slate-400 ml-2">共 {group.items.length} 件</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOrderItems(prev => [
+                                  ...prev,
+                                  {
+                                    id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+                                    name: group.name,
+                                    type: group.name,
+                                    price: group.price,
+                                    count: 1,
+                                    material: '純棉',
+                                    treatment: '標準清洗',
+                                    color: '白色',
+                                    remarks: '',
+                                    garmentId: '',
+                                  },
+                                ]);
+                              }}
+                              className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold hover:bg-emerald-100"
+                            >
+                              ➕ 新增一件
+                            </button>
+                          </div>
+                          <div className="divide-y divide-slate-100">
+                            {group.items.map((item, localIndex) => (
+                              <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-4">
+                                <div className="md:col-span-1 text-xs font-black text-slate-400">#{localIndex + 1}</div>
+                                <div className="md:col-span-3">
+                                  <label className="text-xs font-bold text-slate-400">衣物編號</label>
+                                  <input
+                                    value={item.garmentId}
+                                    onChange={event => updateCartItem(item.originalIndex, 'garmentId', event.target.value.toUpperCase())}
+                                    placeholder="C-0001"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs font-mono focus:outline-none"
+                                  />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <label className="text-xs font-bold text-slate-400">顏色</label>
+                                  <input
+                                    value={item.color}
+                                    onChange={event => updateCartItem(item.originalIndex, 'color', event.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none"
+                                  />
+                                </div>
+                                <div className="md:col-span-2">
+                                  <label className="text-xs font-bold text-slate-400">處理方式</label>
+                                  <select
+                                    value={item.treatment || '標準清洗'}
+                                    onChange={event => updateCartItem(item.originalIndex, 'treatment', event.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none"
                                   >
-                                    ➕ 新增一件
+                                    <option>標準清洗</option>
+                                    <option>精緻乾洗</option>
+                                    <option>高溫除蟎</option>
+                                    <option>特殊去漬</option>
+                                  </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                  <label className="text-xs font-bold text-slate-400">價格</label>
+                                  <input
+                                    type="number"
+                                    value={item.price}
+                                    onChange={event => updateCartItem(item.originalIndex, 'price', Number(event.target.value))}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs focus:outline-none"
+                                  />
+                                </div>
+                                <div className="md:col-span-2 flex justify-end">
+                                  <button type="button" onClick={() => removeCartItem(item.originalIndex)} className="text-red-500 text-xs font-black hover:text-red-700">
+                                    移除
                                   </button>
-                                  <span className="font-black font-mono w-16 text-right">${group.price * group.items.length}</span>
                                 </div>
                               </div>
-
-                              {/* 依序渲染該群組下的所有衣服 (保留原始 Index 操作) */}
-                              <div className="space-y-2">
-                                {group.items.map((item: any) => {
-                                  const idx = item.originalIndex; // 對應回原本的 orderItems
-                                  return (
-                                    <div key={item.id} className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1.5fr_auto] gap-2 items-end text-[11px] bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
-                                      <div>
-                                        <label className="block text-emerald-600 font-bold mb-1">專屬編號(可掃描)*</label>
-                                        <input 
-                                          type="text"
-                                          placeholder="掃描條碼"
-                                          value={item.garmentId || ''}
-                                          onChange={(e) => updateCartItem(idx, 'garmentId', e.target.value)}
-                                          className="w-full bg-emerald-50 border border-emerald-200 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-mono text-emerald-800"
-                                        />
-                                      </div>
-                                      <div>
-                                        <label className="block text-slate-400 mb-1">顏色</label>
-                                        <select 
-                                          value={item.color} 
-                                          onChange={(e) => updateCartItem(idx, 'color', e.target.value)}
-                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
-                                        >
-                                          <option value="白色">白色</option>
-                                          <option value="黑色">黑色</option>
-                                          <option value="藍色">藍色</option>
-                                          <option value="紅色">紅色</option>
-                                          <option value="黃色">黃色</option>
-                                          <option value="綠色">綠色</option>
-                                          <option value="灰色">灰色</option>
-                                          <option value="其他">其他</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block text-slate-400 mb-1">材質</label>
-                                        <select 
-                                          value={item.material} 
-                                          onChange={(e) => updateCartItem(idx, 'material', e.target.value)}
-                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
-                                        >
-                                          <option value="純棉">純棉</option>
-                                          <option value="羊毛">羊毛</option>
-                                          <option value="蠶絲">蠶絲</option>
-                                          <option value="羽絨">羽絨</option>
-                                          <option value="其他">其他</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block text-slate-400 mb-1">洗程</label>
-                                        <select 
-                                          value={item.treatment} 
-                                          onChange={(e) => updateCartItem(idx, 'treatment', e.target.value)}
-                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
-                                        >
-                                          <option value="標準清洗">標準清洗</option>
-                                          <option value="精緻水洗">精緻水洗</option>
-                                          <option value="低溫乾洗">低溫乾洗</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block text-slate-400 mb-1">個別備註</label>
-                                        <input 
-                                          type="text"
-                                          placeholder="例：有漬"
-                                          value={item.remarks}
-                                          onChange={(e) => updateCartItem(idx, 'remarks', e.target.value)}
-                                          className="w-full bg-white border border-slate-200 rounded p-1.5 focus:outline-none"
-                                        />
-                                      </div>
-                                      <div className="pb-1">
-                                        {/* 刪除同樣呼叫原本的 removeCartItem 即可 */}
-                                        <button type="button" onClick={() => removeCartItem(idx)} className="text-slate-300 hover:text-red-500 font-bold p-1 text-sm">✕</button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
-
               </div>
 
-              {/* 右側結帳欄 */}
-              <div className="xl:col-span-5 flex flex-col gap-6">
-                
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-sm font-bold text-slate-700 mb-3">🌿 生物溶劑與店鋪備註</h3>
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 sticky top-24">
+                  <h3 className="text-lg font-black text-slate-800 mb-4">結帳摘要</h3>
                   <div className="space-y-4">
-                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
                       <div>
-                        <span className="font-bold text-slate-700 block">無毒生物分解溶劑</span>
-                        <span className="text-slate-400 text-[10px]">保護環境且溫和保護衣料</span>
+                        <div className="font-black text-emerald-800">生物溶劑</div>
+                        <div className="text-xs text-emerald-600">保護環境且溫和護衣</div>
                       </div>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={useEcoSolvent}
-                        onChange={(e) => setEcoSolvent(e.target.checked)}
-                        className="w-10 h-5 bg-slate-200 rounded-full appearance-none cursor-pointer relative checked:bg-emerald-500 before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-5 transition-all duration-200"
+                        onChange={event => setEcoSolvent(event.target.checked)}
+                        className="w-5 h-5 accent-emerald-600"
                       />
                     </div>
+
                     <div>
-                      <label className="block text-xs font-bold text-slate-600 mb-1">整單補充備註</label>
-                      <textarea 
-                        rows={2} 
-                        placeholder="例：7/1中午前取..."
+                      <label className="text-xs font-black text-slate-400">整單補充備註</label>
+                      <textarea
                         value={orderRemark}
-                        onChange={(e) => setOrderRemark(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none"
-                      ></textarea>
+                        onChange={event => setOrderRemark(event.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs focus:outline-none min-h-[80px]"
+                        placeholder="例如：領口加強、不要香精、急件..."
+                      />
                     </div>
+
+                    <div>
+                      <label className="text-xs font-black text-slate-400">選擇付款方式</label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {['現金', '儲值金', '信用卡', '行動支付'].map(method => (
+                          <button
+                            key={method}
+                            type="button"
+                            onClick={() => setPaymentMethod(method)}
+                            className={`py-2 rounded-lg text-xs font-bold transition ${
+                              paymentMethod === method ? 'bg-teal-400 text-emerald-950 font-black' : 'bg-emerald-800 text-emerald-100'
+                            }`}
+                          >
+                            {method}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">衣物件數</span>
+                        <span className="font-black">{orderItems.length} 件</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">洗滌費小計</span>
+                        <span className="font-black">${calculateSubtotal()}</span>
+                      </div>
+                      <div className="flex justify-between text-xl font-black text-slate-900 pt-2">
+                        <span>應收總金額</span>
+                        <span>${calculateSubtotal()}</span>
+                      </div>
+                    </div>
+
+                    <button type="button" onClick={handleCheckout} className="w-full bg-[#3f8f61] hover:bg-[#327750] text-white font-black py-3 rounded-xl shadow-lg">
+                      ⚡ 建立清洗單
+                    </button>
                   </div>
                 </div>
-
-                <div className="bg-emerald-900 rounded-2xl p-6 text-white shadow-xl">
-                  <div className="mb-4">
-                    <label className="block text-xs text-emerald-300 font-bold mb-2">💳 選擇付款方式</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['現金', '儲值金', '信用卡', '行動支付'].map(method => (
-                        <button
-                          key={method}
-                          type="button"
-                          onClick={() => setPaymentMethod(method)}
-                          className={`py-2 rounded-lg text-xs font-bold transition ${
-                            paymentMethod === method 
-                              ? 'bg-teal-400 text-emerald-950 font-black' 
-                              : 'bg-emerald-800 text-emerald-100'
-                          }`}
-                        >
-                          {method}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm border-t border-emerald-800 pt-4 pb-4 mb-4">
-                    <div className="flex justify-between">
-                      <span className="text-emerald-300">洗滌費小計</span>
-                      <span className="font-mono font-bold">${calculateSubtotal()}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-baseline mb-6">
-                    <span className="text-emerald-300 text-xs font-semibold">應收總金額</span>
-                    <span className="text-4xl font-black font-mono text-teal-200">${calculateSubtotal()}</span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCheckout}
-                    className="w-full bg-gradient-to-r from-teal-400 to-emerald-500 hover:from-teal-300 hover:to-emerald-400 text-emerald-950 font-extrabold text-sm py-4 rounded-xl transition shadow-md"
-                  >
-                    ⚡ 建立清洗單
-                  </button>
-                </div>
-
               </div>
-
             </div>
           )}
 
-          {/* ==========================================
-              5. 庫存管理
-              ========================================== */}
           {activeTab === 'inventory' && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-700">智慧物資與耗材庫存</h3>
-                <span className="text-xs text-slate-400">店鋪物資臨界預警</span>
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <h3 className="text-lg font-black text-slate-800">智慧物資與耗材庫存</h3>
+                <p className="text-sm text-slate-500 mt-1">店鋪物資臨界預警與補貨登記。</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {inventoryList.map((inv, idx) => (
-                  <div key={idx} className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex justify-between items-center transition hover:shadow-sm">
-                    <div>
-                      <div className="font-bold text-slate-800 text-sm">{inv.name}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        安全庫存水位下限: {inv.minStock} {inv.unit}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {inventoryList.map((inventory, index) => {
+                  const isLow = inventory.stock <= inventory.minStock;
+                  return (
+                    <div key={inventory.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-black text-slate-800">{inventory.name}</div>
+                          <div className="text-xs text-slate-400 mt-1">安全庫存下限：{inventory.minStock} {inventory.unit}</div>
+                        </div>
+                        <span className={`text-[11px] font-black rounded-full border px-2 py-1 ${isLow ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                          {isLow ? '需補貨' : '正常'}
+                        </span>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <div className={`text-xl font-extrabold ${inv.stock <= inv.minStock ? 'text-red-500' : 'text-emerald-700'}`}>
-                        {inv.stock} <span className="text-xs font-normal text-slate-500">{inv.unit}</span>
-                      </div>
+                      <div className="text-4xl font-black text-slate-900 mt-5">{inventory.stock}<span className="text-sm text-slate-400 ml-1">{inventory.unit}</span></div>
                       <button
                         type="button"
                         onClick={() => {
-                          const updated = [...inventoryList];
-                          updated[idx].stock += 50;
-                          setInventoryList(updated);
-                          showToast(`已成功為 ${inv.name} 補貨 50 單位`);
+                          setInventoryList(prev => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, stock: item.stock + 50 } : item)));
+                          showToast(`已成功為 ${inventory.name} 補貨 50 ${inventory.unit}`);
                         }}
-                        className="text-[10px] mt-1.5 px-2 py-0.5 bg-white border border-slate-200 hover:border-[#3f8f61] rounded text-slate-600 transition font-bold"
+                        className="text-xs mt-5 px-3 py-2 bg-slate-50 border border-slate-200 hover:border-[#3f8f61] rounded-lg text-slate-600 transition font-bold"
                       >
-                        補貨登記
+                        補貨登記 +50
                       </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* ==========================================
-              6. 報表分析
-              ========================================== */}
           {activeTab === 'reports' && (
             <div className="space-y-6">
-              
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <h3 className="text-base font-bold text-slate-800">📈 智慧環保衣袋 累計循環次數走勢 (折線圖)</h3>
-                    <p className="text-xs text-slate-400">永續綠色包材轉換率與循環次數趨勢走勢圖</p>
+                    <h3 className="text-lg font-black text-slate-800">智慧環保衣袋 累計循環次數走勢</h3>
+                    <p className="text-sm text-slate-500 mt-1">永續綠色包材轉換率與循環次數趨勢走勢圖。</p>
                   </div>
-                  <div className="bg-slate-100 rounded-lg p-1 flex gap-1">
-                    {['年', '季', '月'].map(view => (
+                  <div className="flex bg-slate-100 rounded-xl p-1">
+                    {(['年', '季', '月'] as const).map(view => (
                       <button
                         key={view}
                         type="button"
                         onClick={() => setChartView(view)}
-                        className={`px-3 py-1 text-xs font-bold rounded ${
-                          chartView === view ? 'bg-[#3f8f61] text-white' : 'text-slate-600'
-                        }`}
+                        className={`px-3 py-1 text-xs font-bold rounded-lg transition ${chartView === view ? 'bg-[#3f8f61] text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         {view}
                       </button>
@@ -1620,459 +1717,405 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex justify-center bg-slate-50 rounded-xl p-4 border border-slate-100">
-                  <div className="relative w-full max-w-2xl">
-                    <svg className="w-full h-64 overflow-visible" viewBox="0 0 500 200">
-                      <line x1="40" y1="30" x2="470" y2="30" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="40" y1="90" x2="470" y2="90" stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1="40" y1="150" x2="470" y2="150" stroke="#f1f5f9" strokeWidth="1" />
-                      
-                      <line x1="40" y1="15" x2="40" y2="175" stroke="#cbd5e1" strokeWidth="1" />
-                      <line x1="40" y1="175" x2="470" y2="175" stroke="#cbd5e1" strokeWidth="1" />
-
-                      <defs>
-                        <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      <path 
-                        d={`M ${chartPoints[0].x} 175 L ${polylinePointsString} L ${chartPoints[chartPoints.length - 1].x} 175 Z`} 
-                        fill="url(#areaGrad)" 
-                      />
-
-                      <polyline
-                        fill="none"
-                        stroke="#3f8f61"
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        points={polylinePointsString}
-                      />
-
-                      {chartPoints.map((p, idx) => (
-                        <g key={idx}>
-                          <circle cx={p.x} cy={p.y} r="6" fill="#ffffff" stroke="#3f8f61" strokeWidth="2.5" />
-                          <circle cx={p.x} cy={p.y} r="2.5" fill="#3f8f61" />
-                          
-                          <text x={p.x} y={p.y - 12} textAnchor="middle" fontSize="11" fontWeight="bold" fill="#0f172a">
-                            {p.val}次
-                          </text>
-                          <text x={p.x} y="192" textAnchor="middle" fontSize="11" fill="#64748b" fontWeight="semibold">
-                            {p.label}
-                          </text>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
+                <div className="mt-6 bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                  <svg viewBox="0 0 520 220" className="w-full h-64">
+                    <line x1="40" y1="180" x2="500" y2="180" stroke="#cbd5e1" strokeWidth="2" />
+                    <line x1="40" y1="20" x2="40" y2="180" stroke="#cbd5e1" strokeWidth="2" />
+                    <polyline points={polylinePointsString} fill="none" stroke="#3f8f61" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    {chartPoints.map(point => (
+                      <g key={point.label}>
+                        <circle cx={point.x} cy={point.y} r="6" fill="#3f8f61" />
+                        <text x={point.x} y={point.y - 14} textAnchor="middle" className="text-[11px] fill-slate-700 font-bold">
+                          {point.val}次
+                        </text>
+                        <text x={point.x} y="205" textAnchor="middle" className="text-[11px] fill-slate-500 font-semibold">
+                          {point.label}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
                 </div>
               </div>
 
-              {/* 智慧客群再行銷 */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                <div className="xl:col-span-7 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
-                  <h3 className="text-sm font-bold text-slate-800">🎯 AI 會員智慧客群再行銷</h3>
-                  <div className="flex gap-2">
-                    {['eco_fans', 'inactive', 'big_spenders'].map(seg => (
-                      <button
-                        key={seg}
-                        type="button"
-                        onClick={() => setMarketingSegment(seg)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                          marketingSegment === seg ? 'bg-[#3f8f61] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {seg === 'eco_fans' ? '🌲 環保急先鋒' : seg === 'inactive' ? '⏰ 久未到店客' : '💎 高價值愛好者'}
-                      </button>
-                    ))}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <ReportMetric title="衣袋總使用次數" value={totalBagUseCount} unit="次" hint="依各衣袋累計使用次數加總" />
+                <ReportMetric title="平均每袋使用" value={averageUsePerBag} unit="次 / 袋" hint="總使用次數 ÷ 衣袋數量" />
+                <ReportMetric title="平均多久循環一次" value={averageDaysPerUse} unit="天 / 次" hint="依首次使用到最近使用估算" />
+                <ReportMetric title="目前未歸還衣袋" value={borrowedBagTotal} unit="個" hint={`庫存可用：${availableBagStock} 個`} danger={borrowedBagTotal > 0} />
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-800">循環衣袋使用明細</h3>
+                    <p className="text-sm text-slate-500 mt-1">顯示每個 BAG 編號目前累計使用次數、最近使用日期與平均循環時間。</p>
                   </div>
-                  <textarea
-                    rows={4}
-                    value={customSmsContent}
-                    onChange={(e) => setCustomSmsContent(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs leading-relaxed focus:outline-none"
-                  ></textarea>
-                  <button
-                    type="button"
-                    onClick={handleSendCampaign}
-                    className="w-full bg-[#3f8f61] hover:bg-[#327750] text-white font-bold py-2.5 rounded-xl text-xs"
-                  >
+                  <div className="text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
+                    目前追蹤衣袋：<span className="font-black text-slate-800 ml-1">{bagUsageStats.length}</span> 個
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+                        <th className="py-3 px-2">衣袋編號</th>
+                        <th className="py-3 px-2">目前狀態</th>
+                        <th className="py-3 px-2">目前使用者</th>
+                        <th className="py-3 px-2">使用次數</th>
+                        <th className="py-3 px-2">平均多久一次</th>
+                        <th className="py-3 px-2">首次使用</th>
+                        <th className="py-3 px-2">最近使用</th>
+                        <th className="py-3 px-2">最後歸還</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedBagUsageStats.map(bag => {
+                        const maxUseCount = Math.max(...bagUsageStats.map(item => item.useCount), 1);
+                        const usePercent = Math.min(100, (bag.useCount / maxUseCount) * 100);
+                        const averageCycleDay =
+                          bag.useCount > 1 ? `${(getDaysBetween(bag.firstUsedDate, bag.lastUsedDate) / (bag.useCount - 1)).toFixed(1)} 天` : '首次使用';
+
+                        return (
+                          <tr key={bag.bagId} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                            <td className="py-3 px-2 font-black text-emerald-700 font-mono">{bag.bagId}</td>
+                            <td className="py-3 px-2">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full border text-[11px] font-black ${getBagStatusStyle(bag.status)}`}>{bag.status}</span>
+                            </td>
+                            <td className="py-3 px-2 text-slate-600 font-bold">{bag.currentCustomer}</td>
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-black text-slate-800 w-10">{bag.useCount} 次</span>
+                                <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-[#3f8f61] rounded-full" style={{ width: `${usePercent}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3 px-2 text-slate-600 font-bold">{averageCycleDay}</td>
+                            <td className="py-3 px-2 text-slate-500">{bag.firstUsedDate}</td>
+                            <td className="py-3 px-2 text-slate-500">{bag.lastUsedDate}</td>
+                            <td className="py-3 px-2 text-slate-500">{bag.lastReturnedDate || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <h3 className="text-lg font-black text-slate-800 mb-4">AI 會員智慧客群再行銷</h3>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {(['eco_fans', 'inactive', 'big_spenders'] as const).map(segment => (
+                    <button
+                      key={segment}
+                      type="button"
+                      onClick={() => setMarketingSegment(segment)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${marketingSegment === segment ? 'bg-[#3f8f61] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      {segment === 'eco_fans' ? '環保急先鋒' : segment === 'inactive' ? '久未到店客' : '高價值愛好者'}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={customSmsContent}
+                  onChange={event => setCustomSmsContent(event.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs leading-relaxed focus:outline-none min-h-[120px]"
+                />
+                <div className="flex justify-end mt-3">
+                  <button type="button" onClick={handleSendCampaign} className="bg-[#3f8f61] hover:bg-[#327750] text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-md">
                     發送通知精準推播
                   </button>
                 </div>
-
-                <div className="xl:col-span-5 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-3">
-                  <h3 className="text-sm font-bold text-slate-800">📜 歷史推播紀錄</h3>
-                  <div className="space-y-3">
-                    {campaignHistory.map(cam => (
-                      <div key={cam.id} className="p-3 bg-slate-50 rounded-xl border text-[11px] leading-relaxed">
-                        <div className="flex justify-between font-bold">
-                          <span>{cam.name}</span>
-                          <span className="text-[#3f8f61]">{cam.status}</span>
-                        </div>
-                        <p className="text-slate-500 mt-1 line-clamp-2">「{cam.content}」</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
 
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                <h3 className="text-lg font-black text-slate-800 mb-4">歷史推播紀錄</h3>
+                <div className="space-y-3">
+                  {campaignHistory.map(campaign => (
+                    <div key={campaign.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="font-black text-slate-700 text-sm">{campaign.name}</p>
+                        <span className="text-[11px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded-full font-black">{campaign.status}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 leading-relaxed">「{campaign.content}」</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {/* ==========================================
-              7. 系統設定
-              ========================================== */}
           {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
-              <h3 className="text-sm font-bold text-slate-700 pb-2 border-b border-slate-100">店鋪與系統常規設定</h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-500">店鋪名稱</label>
-                  <input 
-                    type="text" 
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 max-w-4xl">
+              <h3 className="text-lg font-black text-slate-800 mb-4">店鋪與系統常規設定</h3>
+              <div className="space-y-4">
+                <label className="block">
+                  <span className="text-xs font-black text-slate-400">店鋪名稱</span>
+                  <input
                     value={settings.storeName}
-                    onChange={(e) => setSettings({ ...settings, storeName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none"
+                    onChange={event => setSettings({ ...settings, storeName: event.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-500">聯絡電話</label>
-                  <input 
-                    type="text" 
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black text-slate-400">聯絡電話</span>
+                  <input
                     value={settings.phone}
-                    onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none"
+                    onChange={event => setSettings({ ...settings, phone: event.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
                   />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-500">店鋪地址</label>
-                  <input 
-                    type="text" 
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black text-slate-400">店鋪地址</span>
+                  <input
                     value={settings.address}
-                    onChange={(e) => setSettings({ ...settings, address: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none"
+                    onChange={event => setSettings({ ...settings, address: event.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
                   />
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="block text-xs font-semibold text-slate-500">自動通知範本</label>
-                  <textarea 
-                    rows={3}
+                </label>
+                <label className="block">
+                  <span className="text-xs font-black text-slate-400">LINE 通知模板</span>
+                  <textarea
                     value={settings.lineNotificationTemplate}
-                    onChange={(e) => setSettings({ ...settings, lineNotificationTemplate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none leading-relaxed"
+                    onChange={event => setSettings({ ...settings, lineNotificationTemplate: event.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none min-h-[130px]"
                   />
-                </div>
-                <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 md:col-span-2 text-xs">
-                  <div>
-                    <span className="font-bold text-slate-700 block">建立訂單後自動列印衣物洗滌熱感洗標標籤</span>
-                    <span className="text-slate-400 text-[10px]">免去手動列印流程</span>
-                  </div>
-                  <input 
-                    type="checkbox" 
+                </label>
+                <label className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-xl p-4 text-sm font-bold">
+                  <input
+                    type="checkbox"
                     checked={settings.isAutoPrintLabel}
-                    onChange={(e) => setSettings({ ...settings, isAutoPrintLabel: e.target.checked })}
-                    className="w-10 h-5 bg-slate-200 rounded-full appearance-none cursor-pointer relative checked:bg-emerald-500 before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-5 transition-all duration-200"
+                    onChange={event => setSettings({ ...settings, isAutoPrintLabel: event.target.checked })}
+                    className="w-5 h-5 accent-emerald-600"
                   />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4">
-                <button
-                  type="button"
-                  onClick={() => showToast('⚙️ 系統設定已成功儲存至 POS 本地端')}
-                  className="bg-[#3f8f61] hover:bg-[#327750] text-white text-xs font-bold px-6 py-2.5 rounded-xl transition shadow-md"
-                >
+                  建立訂單後自動列印衣物標籤
+                </label>
+                <button type="button" onClick={() => showToast('系統設定已儲存！')} className="bg-[#3f8f61] text-white font-black px-5 py-3 rounded-xl text-sm">
                   儲存設定
                 </button>
               </div>
             </div>
           )}
-
         </div>
       </main>
 
-      {/* ==========================================
-          MODALS & OVERLAYS
-          ========================================== */}
-
-      {/* 1. 快速歸還衣袋銷帳之 Modal 彈窗 */}
       {isQuickReturnOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-                <span>♻️ 現場衣袋歸還 ｜ 條碼快速掃描</span>
-              </h3>
-              <button type="button" onClick={() => setIsQuickReturnOpen(false)} className="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
-            </div>
-
-            <form onSubmit={handleQuickReturnSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">請掃描或輸入歸還衣袋編號 *</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="請掃描衣袋上的條碼，如: BAG-8821"
-                  value={quickReturnBagId}
-                  onChange={(e) => setQuickReturnBagId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">衣袋狀況</label>
-                <select 
-                  value={quickReturnBagCondition}
-                  onChange={(e) => setQuickReturnBagCondition(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="良好">良好</option>
-                  <option value="輕微破損">輕微破損</option>
-                  <option value="嚴重破損">嚴重破損</option>
-                  <option value="需清潔">需清潔</option>
-                </select>
-              </div>
-
-              <div className="text-[11px] text-slate-500 leading-relaxed">
-                ※ 歸還成功後，系統會自動在顧客借用名冊中銷帳，相關的洗衣訂單會標記為「已取件」，並為會員帳戶增發 **+50 配客點**！
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsQuickReturnOpen(false)}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-bold py-2.5 rounded-xl transition"
-                >
-                  取消
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2.5 rounded-xl transition shadow-md"
-                >
-                  確認快速歸還
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title="快速歸還衣袋" onClose={() => setIsQuickReturnOpen(false)}>
+          <form onSubmit={handleQuickReturnSubmit} className="space-y-4">
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">衣袋編號</span>
+              <input
+                value={quickReturnBagId}
+                onChange={event => setQuickReturnBagId(event.target.value)}
+                placeholder="BAG-0001"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">衣袋狀況</span>
+              <select
+                value={quickReturnBagCondition}
+                onChange={event => setQuickReturnBagCondition(event.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              >
+                <option>良好</option>
+                <option>輕微破損</option>
+                <option>嚴重破損</option>
+                <option>需清潔</option>
+              </select>
+            </label>
+            <button type="submit" className="w-full bg-[#3f8f61] text-white font-black py-3 rounded-xl">
+              確認歸還
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* 2. 包裝時掃描綁定衣袋的 Modal 彈窗 */}
       {isBagBindingModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-800">📦 洗畢包裝 ｜ 智慧環保衣袋綁定</h3>
-              <button type="button" onClick={() => setIsBagBindingModalOpen(false)} className="text-slate-400 font-bold text-lg">✕</button>
+        <Modal title="包裝綁定循環衣袋" onClose={() => setIsBagBindingModalOpen(false)}>
+          <form onSubmit={handleBindBagSubmit} className="space-y-4">
+            <div className="bg-emerald-50 text-emerald-800 border border-emerald-100 rounded-xl p-3 text-xs font-bold">
+              訂單：{bindingOrderId}，請掃描或輸入 BAG-xxxx 衣袋編碼。
             </div>
-
-            <form onSubmit={handleBindBagSubmit} className="space-y-4">
-              <div className="bg-slate-50 p-3 rounded-xl text-xs space-y-1 text-slate-600 border border-slate-100 font-medium">
-                <div>進行包裝單號：<span className="font-mono text-emerald-800 font-bold">{bindingOrderId}</span></div>
-                <div>顧客名字：<span>{orders.find(o => o.id === bindingOrderId)?.customerName}</span></div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">掃描包裝袋條碼 *</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="請輸入或掃描，如: BAG-1024"
-                  value={tempBagId}
-                  onChange={(e) => setTempBagId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsBagBindingModalOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2 rounded-xl"
-                >
-                  取消
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2 rounded-xl"
-                >
-                  確認綁定包裝
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">衣袋編號</span>
+              <input
+                value={tempBagId}
+                onChange={event => setTempBagId(event.target.value.toUpperCase())}
+                placeholder="BAG-0001"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-mono focus:outline-none"
+              />
+            </label>
+            <button type="submit" className="w-full bg-[#3f8f61] text-white font-black py-3 rounded-xl">
+              完成綁定並改為待取件
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* 3. 快速註冊新會員的 Modal 彈窗 */}
       {isAddMemberOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-100 relative">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-800">👤 快速註冊數位會員</h3>
-              <button type="button" onClick={() => setIsAddMemberOpen(false)} className="text-slate-400 font-bold text-lg">✕</button>
-            </div>
-
-            <form onSubmit={handleCreateMember} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">顧客姓名 *</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="例如: 蔡依林"
-                  value={newMemberName}
-                  onChange={(e) => setNewMemberName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">手機號碼 *</label>
-                <input 
-                  type="tel" 
-                  required
-                  placeholder="例如: 0912-345-678"
-                  value={newMemberPhone}
-                  onChange={(e) => setNewMemberPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsAddMemberOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2.5 rounded-xl"
-                >
-                  取消
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-xl"
-                >
-                  建立並帶入
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <Modal title="新增會員" onClose={() => setIsAddMemberOpen(false)}>
+          <form onSubmit={handleCreateMember} className="space-y-4">
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">會員姓名</span>
+              <input
+                value={newMemberName}
+                onChange={event => setNewMemberName(event.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">電話</span>
+              <input
+                value={newMemberPhone}
+                onChange={event => setNewMemberPhone(event.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              />
+            </label>
+            <button type="submit" className="w-full bg-[#3f8f61] text-white font-black py-3 rounded-xl">
+              建立會員
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* 4. 自訂衣物項目 Modal 彈窗 */}
-      {isCustomItemOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-800">➕ 新增自訂衣服項目</h3>
-              <button type="button" onClick={() => setIsCustomItemOpen(false)} className="text-slate-400 font-bold text-lg">✕</button>
-            </div>
-
-            <form onSubmit={handleAddCustomItem} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">洗滌品項名稱 *</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="例：蕾絲長裙、泰迪熊玩偶"
-                  value={customItemName}
-                  onChange={(e) => setCustomItemName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">洗滌價格 *</label>
-                <input 
-                  type="number" 
-                  required
-                  placeholder="例：350"
-                  value={customItemPrice}
-                  onChange={(e) => setCustomItemPrice(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsCustomItemOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2 rounded-xl"
-                >
-                  取消
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-emerald-600 text-white text-sm font-bold py-2 rounded-xl"
-                >
-                  新增至洗籃
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 5. 會員儲值加值金額 Modal 彈窗 */}
       {isTopUpOpen && topUpCustomer && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 border border-slate-100 relative">
-            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-800">💳 會員儲值加值中心</h3>
-              <button type="button" onClick={() => setIsTopUpOpen(false)} className="text-slate-400 font-bold text-lg">✕</button>
+        <Modal title="會員快速儲值" onClose={() => setIsTopUpOpen(false)}>
+          <form onSubmit={handleTopUpSubmit} className="space-y-4">
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm">
+              <div className="font-black text-slate-800">{topUpCustomer.name}</div>
+              <div className="text-xs text-slate-500 mt-1">目前餘額：${topUpCustomer.balance}</div>
             </div>
-
-            <form onSubmit={handleTopUpSubmit} className="space-y-4">
-              <div className="bg-slate-50 p-3 rounded-xl text-xs space-y-1">
-                <div>會員編號：<span className="font-mono font-bold">{topUpCustomer.id}</span></div>
-                <div>姓名：<strong>{topUpCustomer.name}</strong></div>
-                <div>目前餘額：<strong className="text-emerald-700">${topUpCustomer.balance} 元</strong></div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">請輸入加值金額 ($) *</label>
-                <input 
-                  type="number" 
-                  required
-                  placeholder="例：1000、3000"
-                  value={topUpAmount}
-                  onChange={(e) => setTopUpAmount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-sm"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <button 
-                  type="button" 
-                  onClick={() => setIsTopUpOpen(false)}
-                  className="flex-1 bg-slate-100 text-slate-600 text-sm font-bold py-2 rounded-xl"
-                >
-                  取消
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-[#3f8f61] text-white text-sm font-bold py-2 rounded-xl"
-                >
-                  確認加值
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">儲值金額</span>
+              <input
+                type="number"
+                value={topUpAmount}
+                onChange={event => setTopUpAmount(event.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              />
+            </label>
+            <button type="submit" className="w-full bg-amber-500 text-slate-950 font-black py-3 rounded-xl">
+              確認儲值
+            </button>
+          </form>
+        </Modal>
       )}
 
-      {/* 吐司訊息提示樣式 */}
-      {toastMessage && (
-        <div className="fixed bottom-4 right-4 bg-emerald-600 text-white rounded-xl py-3 px-5 shadow-2xl z-50 flex items-center gap-2 font-semibold text-xs">
-          <span>✨</span>
-          {toastMessage}
-        </div>
+      {isCustomItemOpen && (
+        <Modal title="新增自訂衣物" onClose={() => setIsCustomItemOpen(false)}>
+          <form onSubmit={handleAddCustomItem} className="space-y-4">
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">衣物名稱</span>
+              <input
+                value={customItemName}
+                onChange={event => setCustomItemName(event.target.value)}
+                placeholder="例如：皮衣、窗簾、特殊布料"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-black text-slate-400">價格</span>
+              <input
+                type="number"
+                value={customItemPrice}
+                onChange={event => setCustomItemPrice(event.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none"
+              />
+            </label>
+            <button type="submit" className="w-full bg-[#3f8f61] text-white font-black py-3 rounded-xl">
+              新增到購物籃
+            </button>
+          </form>
+        </Modal>
       )}
+    </div>
+  );
+}
 
+function MetricCard({ title, value, unit, hint }: { title: string; value: string; unit?: string; hint: string }) {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-1">
+      <div className="text-slate-400 text-xs font-semibold">{title}</div>
+      <div className="text-3xl font-black text-slate-800">
+        {value} {unit && <span className="text-xs text-slate-500">{unit}</span>}
+      </div>
+      <div className="text-[11px] text-emerald-600 font-bold">{hint}</div>
+    </div>
+  );
+}
+
+function SmallStat({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="bg-slate-50 rounded-xl border border-slate-100 p-3">
+      <div className="text-[11px] text-slate-400 font-bold">{title}</div>
+      <div className="text-lg font-black text-slate-800 mt-1">{value}</div>
+    </div>
+  );
+}
+
+function ReportMetric({ title, value, unit, hint, danger }: { title: string; value: string | number; unit: string; hint: string; danger?: boolean }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <p className="text-xs font-bold text-slate-400">{title}</p>
+      <p className="text-3xl font-black text-slate-800 mt-2">
+        {value}
+        <span className="text-sm ml-1 text-slate-400">{unit}</span>
+      </p>
+      <p className={`text-xs font-bold mt-2 ${danger ? 'text-red-500' : 'text-emerald-600'}`}>{hint}</p>
+    </div>
+  );
+}
+
+function CustomerSummaryTable({ customers }: { customers: Customer[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+      <h3 className="text-lg font-black text-slate-800 mb-4">客戶資料摘要</h3>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-left text-xs text-slate-400">
+              <th className="py-3 px-2">會員編號</th>
+              <th className="py-3 px-2">姓名</th>
+              <th className="py-3 px-2">聯絡電話</th>
+              <th className="py-3 px-2">消費次數</th>
+              <th className="py-3 px-2">累積消費</th>
+              <th className="py-3 px-2">會員等級</th>
+              <th className="py-3 px-2">最後消費</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map(customer => (
+              <tr key={customer.id} className="border-b border-slate-50 hover:bg-slate-50">
+                <td className="py-3 px-2 font-mono font-black text-emerald-700">{customer.id}</td>
+                <td className="py-3 px-2 font-bold">{customer.name}</td>
+                <td className="py-3 px-2 text-slate-500">{customer.phone}</td>
+                <td className="py-3 px-2">{customer.totalOrders}</td>
+                <td className="py-3 px-2">${customer.totalSpent.toLocaleString()}</td>
+                <td className="py-3 px-2">{customer.level}</td>
+                <td className="py-3 px-2 text-slate-500">{customer.lastVisit}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="font-black text-slate-800">{title}</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-700 font-black">
+            ✕
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
     </div>
   );
 }
